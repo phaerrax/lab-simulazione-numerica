@@ -1,0 +1,20 @@
+# Ignore all files...
+*
+
+# ...but track those with selected names
+!*.cc
+!*.hh
+!*.ipynb
+!makefile
+!README
+!LICENCE
+!.gitignore
+
+# These files are needed by the random numner generator.
+!Primes
+!seed.in
+
+# Include all directories, except some.
+!*/
+exercise-tools/
+rng/
