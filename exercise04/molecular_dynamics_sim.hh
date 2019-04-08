@@ -32,10 +32,7 @@ class molecular_dynamics_sim
 
         // Read some thermodynamic properties of the system, calculated from
         // its current state.
-        double potential_energy() const;
-        double kinetic_energy() const;
-        double temperature() const;
-        double total_energy() const;
+        double measure() const;
 
         void write_config(const std::string &) const;
         // Write the final configuration of the system in a file.

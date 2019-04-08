@@ -1,6 +1,7 @@
 #include "molecular_dynamics_sim.hh"
 #include <string>
 #include <sstream>
+#include <numeric>
 #include "random.hh"
 
 void molecular_dynamics_sim::set_init_config(const std::string & input_parameters_file)
@@ -319,58 +320,54 @@ void molecular_dynamics_sim::measure()
 {
     // Compute thermodynamical quantities of the system, and append the
     // results to the given files.
-    double potential_energy(0),
-           kinetic_energy(0),
-           vij; // ??
-    double dx, dy, dz, dr;
-    std::ofstream Epot, Ekin, Etot, Temp;
+    double potential_en(0),
+           kinetic_en(0),
+           pair_interaction_en;
 
-    Epot.open("output_epot.dat", std::ios::app);
-    Ekin.open("output_ekin.dat", std::ios::app);
-    Temp.open("output_temp.dat", std::ios::app);
-    Etot.open("output_etot.dat", std::ios::app);
+    std::ofstream potential_en_output,
+                  kinetic_en_output,
+                  temperature_output,
+                  total_en_output;
 
-    v = 0.0; //reset observables
-    t = 0.0;
+    potential_en_output("output_epot.dat", std::ios::app);
+    kinetic_en_output("output_ekin.dat", std::ios::app);
+    temperature_output("output_temp.dat", std::ios::app);
+    total_en_output("output_etot.dat", std::ios::app);
 
-    //cycle over pairs of particles
-    for(unsigned int i = 0; i < n_particles-1; ++i)
-    {
-        for(int j=i+1; j<n_particles; ++j)
+    // Cycle over pairs of particles.
+    unsigned int n_coordinates = position.begin()->size();
+    std::vector<double> displacement(n_coordinates);
+    double distance;
+    for(unsigned int i = 0; i < n_particles - 1; ++i)
+        for(unsigned int j = i + 1; j < n_particles; ++j)
         {
-            dx = quotient( x[i] - x[j] );
-            dy = quotient( y[i] - y[j] );
-            dz = quotient( z[i] - z[j] );
-
-            dr = dx*dx + dy*dy + dz*dz;
-            dr = sqrt(dr);
-            if(dr < distance_cutoff)
-            {
-                vij = 4.0/pow(dr,12) - 4.0/pow(dr,6);
-                //Potential energy
-                v += vij;
-            }
+            for(unsigned int d = 0; d < n_coordinates; ++d)
+                displacement[d] = quotient(position[i][d] - position[j][d]);
+            // In the computation of the potential en include only
+            // the pairs whose distance is less than the cutoff radius.
+            distance = std::sqrt(std::inner_product(displacement.begin(), displacement.begin(), displacement.end(), 0.));
+            if(distance < distance_cutoff)
+                potential_en += 4. * pow(distance, -12) - 4. * pow(distance, -6);
         }          
-    }
 
-    //Kinetic energy
-    for(unsigned int i = 0; i < n_particles; ++i)
-        t += 0.5 * (vx[i]*vx[i] + vy[i]*vy[i] + vz[i]*vz[i]);
+    // Kinetic en (per the particle mass).
+    for(auto & v : velocities)
+        kinetic_en += 0.5 * std::inner_product(v.begin(), v.begin(), v.end(), 0.);
 
-    stima_pot = v/static_cast<double>(n_particles); //Potential energy
-    stima_kin = t/static_cast<double>(n_particles); //Kinetic energy
-    stima_temp = (2.0 / 3.0) * t/static_cast<double>(n_particles); //Temperature
-    stima_etot = (t+v)/static_cast<double>(n_particles); //Total enery
+    current_potential_en_density = potential_en / n_particles;
+    current_kinetic_en_density   = kinetic_en / n_particles;
+    current_temperature          = 2. / 3. * kinetic_en / n_particles;
+    current_total_en_density     = (kinetic_en + potential_en) / n_particles;
 
-    Epot << stima_pot  << std::endl;
-    Ekin << stima_kin  << std::endl;
-    Temp << stima_temp << std::endl;
-    Etot << stima_etot << std::endl;
+    potential_en_output << current_potential_en_density << std::endl;
+    kinetic_en_output   << current_kinetic_en_density   << std::endl;
+    temperature_output  << current_temperature          << std::endl;
+    total_en_output     << current_total_en_density     << std::endl;
 
-    Epot.close();
-    Ekin.close();
-    Temp.close();
-    Etot.close();
+    potential_en_output.close();
+    kinetic_en_output.close();
+    temperature_output.close();
+    total_en_output.close();
 
     return;
 }
