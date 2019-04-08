@@ -162,28 +162,36 @@ void molecular_dynamics_sim::initialise_uniform(Random & rng)
     // The velocities will be translated such that the velocity of the
     // centre of mass is zero. For this, we need the sum of the velocities.
     std::vector<double> com_velocity(n_coordinates, 0.);
-    for(auto & particle_velocity : velocity)
+    velocity.resize(n_particles);
+    for(auto & v : velocity)
+    {
+        v.resize(n_coordinates);
         for(unsigned int d = 0; d < n_coordinates; ++d)
         {
             // Generate uniformly distributed velocities in [-0.5, 0.5).
-            particle_velocity[d] = rng.Rannyu() - 0.5;
-            com_velocity[d] += particle_velocity[d];
+            v[d] = rng.Rannyu() - 0.5;
+            com_velocity[d] += v[d];
         }
+    }
 
     for(unsigned int d = 0; d < n_coordinates; ++d)
         com_velocity[d] /= n_particles;
 
     // Subtract from each velocity the centre of mass velocity
     // calculated above.
-    for(auto & particle_velocity : velocity)
+    for(auto & v : velocity)
         for(unsigned int d = 0; d < n_coordinates; ++d)
-            particle_velocity[d] -= com_velocity[d];
+            v[d] -= com_velocity[d];
 
     // From the initial position and the initial velocity, extrapolate
     // a value for the "pre-initial" position.
+    old_position.resize(n_particles);
     for(unsigned int i = 0; i < n_particles; ++i)
+    {
+        old_position[i].resize(n_coordinates);
         for(unsigned int d = 0; d < n_coordinates; ++d)
             old_position[i][d] = position[i][d] - velocity[i][d] * time_step;
+    }
 
     return;
 }
