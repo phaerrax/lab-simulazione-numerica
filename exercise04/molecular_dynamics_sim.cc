@@ -183,7 +183,7 @@ void molecular_dynamics_sim::initialise_uniform(Random & rng)
     // a value for the "pre-initial" position.
     for(unsigned int i = 0; i < n_particles; ++i)
         for(unsigned int d = 0; d < n_coordinates; ++d)
-            old_position[i][d] = position[i][d] - particle_velocity[i][d] * time_step;
+            old_position[i][d] = position[i][d] - velocity[i][d] * time_step;
 
     return;
 }
@@ -201,14 +201,15 @@ void molecular_dynamics_sim::rescale_velocity(double input_temperature)
 
     // Rescale all the velocities in order to match the input temperature
     // given before.
+    unsigned int n_coordinates = position.begin()->size();
     double scale_factor = std::sqrt(3. * temperature / sum_sq_velocities);
-    for(auto & particle_velocity : velocity)
+    for(unsigned int i = 0; i < n_particles; ++i)
         for(unsigned int d = 0; d < n_coordinates; ++d)
         {
-            particle_velocity[i][d] *= scale_factor;
+            velocity[i][d] *= scale_factor;
             // From the initial position and the initial velocity, recalculate
             // the value of the "pre-initial" position.
-            old_position[i][d] = position[i][d] - particle_velocity[i][d] * time_step;
+            old_position[i][d] = position[i][d] - velocity[i][d] * time_step;
         }
 
     return;
@@ -264,7 +265,7 @@ void molecular_dynamics_sim::move(void)
     return;
 }
 
-double molecular_dynamics_sim::force(unsigned int this_particle, unsigned int dir)
+double molecular_dynamics_sim::force(unsigned int this_particle, unsigned int dir) const
 {
     // Compute forces as -grad V(r).
     double f(0), distance;
@@ -278,9 +279,9 @@ double molecular_dynamics_sim::force(unsigned int this_particle, unsigned int di
             for(unsigned int d = 0; d < n_coordinates; ++d)
                 displacement[d] = quotient(position[this_particle][d] - position[i][d]);
             distance = std::sqrt(std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.));
-            if(dr < distance_cutoff)
+            if(distance < distance_cutoff)
             {
-                f += displacement[d] * (48. * std::pow(distance, -14) - 24. * std::pow(distance, -8));
+                f += displacement[dir] * (48. * std::pow(distance, -14) - 24. * std::pow(distance, -8));
             }
         }
     }
@@ -288,23 +289,27 @@ double molecular_dynamics_sim::force(unsigned int this_particle, unsigned int di
     return f;
 }
 
-void molecular_dynamics_sim::measure()
+void molecular_dynamics_sim::measure() const
 {
     // Compute thermodynamical quantities of the system, and append the
     // results to the given files.
     double potential_en(0),
-           kinetic_en(0),
-           pair_interaction_en;
+           kinetic_en(0);
 
     std::ofstream potential_en_output,
                   kinetic_en_output,
                   temperature_output,
                   total_en_output;
 
-    potential_en_output("output_epot.dat", std::ios::app);
-    kinetic_en_output("output_ekin.dat", std::ios::app);
-    temperature_output("output_temp.dat", std::ios::app);
-    total_en_output("output_etot.dat", std::ios::app);
+    potential_en_output.open("output_epot.dat", std::ios::app);
+    kinetic_en_output.open("output_ekin.dat", std::ios::app);
+    temperature_output.open("output_temp.dat", std::ios::app);
+    total_en_output.open("output_etot.dat", std::ios::app);
+
+    double current_potential_en_density,
+           current_kinetic_en_density,
+           current_temperature,
+           current_total_en_density;
 
     // Cycle over pairs of particles.
     unsigned int n_coordinates = position.begin()->size();
@@ -323,7 +328,7 @@ void molecular_dynamics_sim::measure()
         }          
 
     // Kinetic en (per the particle mass).
-    for(auto & v : velocities)
+    for(auto & v : velocity)
         kinetic_en += 0.5 * std::inner_product(v.begin(), v.begin(), v.end(), 0.);
 
     current_potential_en_density = potential_en / n_particles;
@@ -348,11 +353,11 @@ void molecular_dynamics_sim::write_config(const std::string & output_file) const
 { 
     // Write the final configuration on file.
     std::cout << "Print final configuration to file " << output_file << "." << std::endl;
-    std::ofstream output_file(output_file);
+    std::ofstream output(output_file);
 
     // Output formatting.
-    output_file.precision(6);
-    output_file << std::scientific;
+    output.precision(6);
+    output << std::scientific;
     const unsigned int col_width(12);
 
     unsigned int n_coordinates = position.begin()->size();
@@ -360,17 +365,17 @@ void molecular_dynamics_sim::write_config(const std::string & output_file) const
     {
         for(unsigned int d = 0; d < n_coordinates; ++d)
             // The lengths are output in units of the cell edge length.
-            output_file << std::setw(col_width) << position[i][d] / cell_edge_length;
-        output_file << std::endl;
+            output << std::setw(col_width) << position[i][d] / cell_edge_length;
+        output << std::endl;
     }
-    output_file.close();
+    output.close();
     return;
 }
 
-void molecular_dynamics_sim::write_config_xyz(const std::string & output_file, int n_conf) const
+void molecular_dynamics_sim::write_config_xyz(const std::string & output_file_prefix, int n_conf) const
 { 
     // Write configuration in .xyz format.
-    std::ofstream output_file("frames/config_" + std::to_string(nconf) + ".xyz");
+    std::ofstream output(output_file_prefix + std::to_string(n_conf) + ".xyz");
 
     // The integer n_conf distinguishes between the "snapshots" of the system
     // taken at regular times during the simulation.
@@ -379,28 +384,22 @@ void molecular_dynamics_sim::write_config_xyz(const std::string & output_file, i
     // system.
 
     // Output formatting.
-    output_file.precision(6);
-    output_file << std::scientific;
+    output.precision(6);
+    output << std::scientific;
     const unsigned int col_width(12);
 
-    output_file << n_particles << "\n";
-    output_file << "Simulation of a bunch of molecules interacting with a Lennard-Jones potential\n";
-    for(unsigned int i = 0; i < n_particles; ++i)
-    {
-        output_file << "LJ  " << quotient(x[i]) << "   " <<  quotient(y[i]) << "   " << quotient(z[i]) << std::endl;
-    }
+    output << n_particles << "\n";
+    output << "Simulation of a bunch of molecules interacting with a Lennard-Jones potential\n";
     unsigned int n_coordinates = position.begin()->size();
     for(unsigned int i = 0; i < n_particles; ++i)
     {
-        output_file << std::setw(col_width) << "LJ";
+        output << std::setw(col_width) << "LJ";
         for(unsigned int d = 0; d < n_coordinates; ++d)
-        {
-            output_file << std::setw(col_width) << quotient(position[i][d])
-        }
-        output_file << std::endl;
+            output << std::setw(col_width) << quotient(position[i][d]);
+        output << std::endl;
     }
 
-    output_file.close();
+    output.close();
 }
 
 double molecular_dynamics_sim::quotient(double r) const

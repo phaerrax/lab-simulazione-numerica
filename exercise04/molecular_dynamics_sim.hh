@@ -60,7 +60,7 @@ class molecular_dynamics_sim
         void move();
         // Advance the algorithm one step with the Verlet method.
 
-        double measure() const;
+        void measure() const;
         // Read some thermodynamic properties of the system, calculated from
         // its current state.
         // In order not to use too many resources, the thermodynamical
