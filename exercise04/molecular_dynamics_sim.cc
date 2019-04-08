@@ -121,6 +121,36 @@ molecular_dynamics_sim::molecular_dynamics_sim(const std::string & initial_confi
     return;
 }
 
+void molecular_dynamics_sim::set_temperature(double input_temperature)
+{
+    temperature = input_temperature;
+    return;
+}
+
+void molecular_dynamics_sim::set_particle_number(unsigned int input_particle_number)
+{
+    n_particles = input_particle_number;
+    return;
+}
+
+void molecular_dynamics_sim::set_particle_density(double input_particle_density)
+{
+    particle_density = input_particle_density;
+    return;
+}
+
+void molecular_dynamics_sim::set_distance_cutoff(double input_distance_cutoff)
+{
+    distance_cutoff = input_distance_cutoff;
+    return;
+}
+
+void molecular_dynamics_sim::set_integration_step(double input_integration_step)
+{
+    integration_step = input_integration_step;
+    return;
+}
+
 void molecular_dynamics_sim::initialise_uniform(Random & rng)
 {
     // Simulate an initial velocity configuration.

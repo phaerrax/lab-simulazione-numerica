@@ -103,6 +103,7 @@ class molecular_dynamics_sim
                time_step,
                particle_density,
                cell_edge_length,
+               integration_step,
                distance_cutoff;
 };
 
