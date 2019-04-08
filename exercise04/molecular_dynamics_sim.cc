@@ -83,14 +83,14 @@ void molecular_dynamics_sim::initialise_uniform(const std::string & initial_conf
 
     std::vector<double> sum(n_coordinates, 0.);
     for(auto & particle_velocity : velocity)
-        for(unsigned int i = 0; i < n_coordinates; ++i)
+        for(unsigned int d = 0; d < n_coordinates; ++d)
         {
             // Generate uniformly distributed velocities in [-0.5, 0.5).
-            particle_velocity[i] = rng.Rannyu() - 0.5;
+            particle_velocity[d] = rng.Rannyu() - 0.5;
             // The velocities will be translated such that the velocity of
             // the centre of mass is zero. For this, we need the sum of
             // the velocities.
-            sum[i] += particle_velocity[i];
+            sum[d] += particle_velocity[d];
         }
 
     for(unsigned int i = 0; i < n_coordinates; ++i)
@@ -144,6 +144,7 @@ void molecular_dynamics_sim::initialise_maxwellboltzmann(const std::string & ini
         // Save each line in a new vector.
         // (The coordinates are given in units of the cell edge length, so
         // we need to rescale them.)
+        new_point.clear();
         std::istringstream iss(line);
         while(iss >> coordinate)
             new_point.push_back(cell_edge_length * std::stod(coordinate));
@@ -192,6 +193,7 @@ void molecular_dynamics_sim::initialise_from_file(const std::string & initial_co
         // Save each line in a new vector.
         // (The coordinates are given in units of the cell edge length, so
         // we need to rescale them.)
+        new_point.clear();
         std::istringstream iss(line);
         while(iss >> coordinate)
             new_point.push_back(cell_edge_length * std::stod(coordinate));
@@ -214,6 +216,7 @@ void molecular_dynamics_sim::initialise_from_file(const std::string & initial_co
         // Save each line in a new vector.
         // (The coordinates are given in units of the cell edge length, so
         // we need to rescale them.)
+        new_point.clear();
         std::istringstream iss(line);
         while(iss >> coordinate)
             new_point.push_back(cell_edge_length * std::stod(coordinate));
