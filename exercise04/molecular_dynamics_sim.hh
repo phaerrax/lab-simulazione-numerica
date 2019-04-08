@@ -8,33 +8,54 @@
 class molecular_dynamics_sim
 {
     public:
-        molecular_dynamics_sim(const std::string &);
+        molecular_dynamics_sim(const std::string &, double = 1);
+        molecular_dynamics_sim(const std::string &, const std::string &, double = 1);
         // Construct the class, collecting from a file the initial
-        // configuration of the system.
+        // configuration of the system. The length of the cell edge can be
+        // supplied in the last argument, in order to rescale the coordinates
+        // from the file.
+        // An additional file can be provided, containing the positions of
+        // the particles in a time step previous to the initial instant.
+        
+        // If the pre-initial configuration is provided, the constructor also
+        // calculates the position at the next step with the Verlet algorithm,
+        // then in computes the velocity of the particles.
 
         molecular_dynamics_sim() = delete;
-        // Simulating the evolution of the system with undefined or
-        // default-constructed parameters is meaningless.
+        // Simulating the evolution of the system without an initial
+        // configuration is meaningless.
 
-        void initialise_uniform(const std::string &, Random & rng);
+        // Set internal parameters
+        // =======================
+        void set_temperature(double);
+        void set_particle_number(unsigned int);
+        void set_particle_density(double);
+        void set_distance_cutoff(double);
+        void set_integration_step(double);
+
+        // Velocity initialisation
+        // =======================
+        void initialise_uniform(Random & rng);
         // Generate an initial distribution of velocities, from which
         // simulate the position of the particles in the time step just
         // before the start.
-        // The velocities are drawn from a uniform distribution, then
-        // they are rescaled in order to match them with a given temperature.
-        // Knowing the position at the current and previous steps, and the
-        // acceleration exerted on each particle, the algorithm can start.
-        void initialise_maxwellboltzmann(const std::string &, Random & rng);
+        void initialise_maxwellboltzmann(double, Random & rng);
         // Same as above, except this time the velocities are sampled from
         // a Maxwell-Boltzmann distribution in accord with the given
-        // temperature (this eliminates the need to rescale the velocities
-        // afterwards).
-        void initialise_from_file(const std::string &, const std::string &);
-        // The "pre-initial" configuration can be also be supplied as a
-        // text file; this way the position at the next step can be
-        // calculated directly with the Verlet algorithm.
-        // Then the velocity of the particles can be calculated, and it is
-        // rescaled in order to match the previously set temperature.
+        // temperature. The temperature is set to the given value.
+
+        void rescale_velocity(double);
+        // If the velocities of the particles have been generated with methods
+        // such as initialise_uniform() or the two-file constructor, the
+        // temperature will depend the velocity distribution.
+        // One may want to set the system to a desired temperature: this
+        // method rescales the velocity of the particles in order to match
+        // the desired temperature. This also recalculates the old positions
+        // from the current position and the newly computed velocities,
+        // and sets the temperature to the given value.
+
+        // Knowing the position at the current and previous steps, and the
+        // force exerted on each particle, the algorithm can start.
 
         void move();
         // Advance the algorithm one step with the Verlet method.
@@ -48,6 +69,8 @@ class molecular_dynamics_sim
         // This has to be done directly in the program using the class,
         // by timing the calls to move() and measure().
 
+        // Output
+        // ======
         void write_config(const std::string &) const;
         // Write the final configuration of the system in a file.
         void write_config_xyz(const std::string &, int) const;
@@ -69,15 +92,13 @@ class molecular_dynamics_sim
 
         std::vector<std::vector<double>> position, old_position, velocity;
         // Position and veolcity of the particles: each sub-array is a
-        // triplet containing the position/velocity of the n-th particle.
+        // d-tuple containing the position/velocity of the n-th particle.
         // Another array contains the position of the particles at the
         // previous integration step.
 
         // Internal / initial parameters
-        unsigned int n_particles, // Total number of particles in the system.
-                     n_steps,
-                     print_steps;
-        double input_temperature,
+        unsigned int n_particles; // Total number of particles in the system.
+        double temperature,
                total_volume,
                time_step,
                particle_density,
