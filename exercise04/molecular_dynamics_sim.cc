@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <numeric>
+#include <iomanip>
 #include "random.hh"
 
 void molecular_dynamics_sim::set_init_config(const std::string & input_parameters_file)
@@ -378,26 +379,56 @@ void molecular_dynamics_sim::write_config(const std::string & output_file) const
     std::cout << "Print final configuration to file " << output_file << "." << std::endl;
     std::ofstream output_file(output_file);
 
+    // Output formatting.
+    output_file.precision(6);
+    output_file << std::scientific;
+    const unsigned int col_width(12);
+
+    unsigned int n_coordinates = position.begin()->size();
     for(unsigned int i = 0; i < n_particles; ++i)
     {
-        output_file << x[i]/cell_edge_length << "   " <<  y[i]/cell_edge_length << "   " << z[i]/cell_edge_length << std::endl;
+        for(unsigned int d = 0; d < n_coordinates; ++d)
+            // The lengths are output in units of the cell edge length.
+            output_file << std::setw(col_width) << position[i][d] / cell_edge_length;
+        output_file << std::endl;
     }
     output_file.close();
     return;
 }
 
-void molecular_dynamics_sim::write_config_xyz(const std::string & output_file, int nconf) const
+void molecular_dynamics_sim::write_config_xyz(const std::string & output_file, int n_conf) const
 { 
     // Write configuration in .xyz format.
-    std::ofstream output_file;
+    std::ofstream output_file("frames/config_" + std::to_string(nconf) + ".xyz");
 
-    output_file.open("frames/config_" + std::to_string(nconf) + ".xyz");
-    output_file << n_particles << std::endl;
-    output_file << "This is only a comment!" << std::endl;
+    // The integer n_conf distinguishes between the "snapshots" of the system
+    // taken at regular times during the simulation.
+    // The list of config_N.xyz files will be read by an external program,
+    // i.e. ovito, which will be able then to visualise the evolution of the
+    // system.
+
+    // Output formatting.
+    output_file.precision(6);
+    output_file << std::scientific;
+    const unsigned int col_width(12);
+
+    output_file << n_particles << "\n";
+    output_file << "Simulation of a bunch of molecules interacting with a Lennard-Jones potential\n";
     for(unsigned int i = 0; i < n_particles; ++i)
     {
         output_file << "LJ  " << quotient(x[i]) << "   " <<  quotient(y[i]) << "   " << quotient(z[i]) << std::endl;
     }
+    unsigned int n_coordinates = position.begin()->size();
+    for(unsigned int i = 0; i < n_particles; ++i)
+    {
+        output_file << std::setw(col_width) << "LJ";
+        for(unsigned int d = 0; d < n_coordinates; ++d)
+        {
+            output_file << std::setw(col_width) << quotient(position[i][d])
+        }
+        output_file << std::endl;
+    }
+
     output_file.close();
 }
 
