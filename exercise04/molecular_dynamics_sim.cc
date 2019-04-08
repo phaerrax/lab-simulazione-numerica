@@ -364,9 +364,9 @@ void molecular_dynamics_sim::write_config(const std::string & output_file) const
     std::ofstream output(output_file);
 
     // Output formatting.
-    output.precision(6);
+    output.precision(4);
     output << std::scientific;
-    const unsigned int col_width(12);
+    const unsigned int col_width(16);
 
     unsigned int n_coordinates = position.begin()->size();
     for(unsigned int i = 0; i < n_particles; ++i)
@@ -392,9 +392,9 @@ void molecular_dynamics_sim::write_config_xyz(const std::string & output_file_pr
     // system.
 
     // Output formatting.
-    output.precision(6);
+    output.precision(4);
     output << std::scientific;
-    const unsigned int col_width(12);
+    const unsigned int col_width(16);
 
     output << n_particles << "\n";
     output << "Simulation of a bunch of molecules interacting with a Lennard-Jones potential\n";
