@@ -56,9 +56,9 @@ int main()
            n_particles,
            particle_density,
            distance_cutoff,
-           time_step,
-           n_steps,
-           print_steps;
+           time_step;
+    unsigned int n_steps,
+                 print_steps;
 
     input_parameters >> temperature
                      >> n_particles
@@ -77,8 +77,8 @@ int main()
     dynamo.set_distance_cutoff(distance_cutoff);
     dynamo.set_integration_step(time_step);
 
-    total_volume = static_cast<double>(n_particles) / particle_density;
-    cell_edge_length = std::pow(total_volume, 1. / 3.);
+    double total_volume = static_cast<double>(n_particles) / particle_density;
+    double cell_edge_length = std::pow(total_volume, 1. / 3.);
 
     std::cout << "Number of particles: "           << n_particles << "\n"
               << "Density of particles: "          << particle_density << "\n"
@@ -91,20 +91,20 @@ int main()
     dynamo.initialise_uniform(rng);
     dynamo.rescale_velocity(temperature);
 
-    int nconf = 1;
-    for(int istep=1; istep <= nstep; ++istep)
+    unsigned int n_conf = 1;
+    for(unsigned int step = 1; step <= n_steps; ++step)
     {
-        Move();           //Move particles with Verlet algorithm
-        if(istep%iprint == 0)
-            std::cout << "Number of time-steps: " << istep << std::endl;
-        if(istep%10 == 0)
+        dynamo.move();
+        if(step % print_steps == 0)
+            std::cout << "Number of time-steps: " << step << std::endl;
+        if(step % print_steps == 0)
         {
-            Measure();     //Properties measurement
-            //        ConfXYZ(nconf);//Write actual configuration in XYZ format //Commented to avoid "filesystem full"! 
-            nconf += 1;
+            dynamo.measure();
+            dynamo.write_config_xyz("frames/config_", n_conf);
+            ++n_conf;
         }
     }
-    ConfFinal();         //Write final configuration to restart
+    dynamo.write_config("config.final");
 
     return 0;
 }
