@@ -1,11 +1,20 @@
 #ifndef MOLECULAR_DYNAMICS_SIM
 #define MOLECULAR_DYNAMICS_SIM
 
+#include <string>
+#include <vector>
+#include "random.hh"
+
 class molecular_dynamics_sim
 {
     public:
-        void set_init_config(const std::string &);
-        // Collect from a file the initial configuration of the system.
+        molecular_dynamics_sim(const std::string &);
+        // Construct the class, collecting from a file the initial
+        // configuration of the system.
+
+        molecular_dynamics_sim() = delete;
+        // Simulating the evolution of the system with undefined or
+        // default-constructed parameters is meaningless.
 
         void initialise_uniform(const std::string &, Random & rng);
         // Generate an initial distribution of velocities, from which
@@ -30,9 +39,14 @@ class molecular_dynamics_sim
         void move();
         // Advance the algorithm one step with the Verlet method.
 
+        double measure() const;
         // Read some thermodynamic properties of the system, calculated from
         // its current state.
-        double measure() const;
+        // In order not to use too many resources, the thermodynamical
+        // properties of the system should not be evaluated at each new step,
+        // but only after a certain number of steps, say every tenth step.
+        // This has to be done directly in the program using the class,
+        // by timing the calls to move() and measure().
 
         void write_config(const std::string &) const;
         // Write the final configuration of the system in a file.
@@ -61,24 +75,14 @@ class molecular_dynamics_sim
 
         // Internal / initial parameters
         unsigned int n_particles, // Total number of particles in the system.
-                     n_steps,     // Number of integration steps.
+                     n_steps,
                      print_steps;
-        // In order not to use too many resources, the thermodynamical
-        // properties of the system are not evaluated at each new step, but
-        // only after 'print_steps' steps.
         double input_temperature,
                total_volume,
                time_step,
                particle_density,
                cell_edge_length,
                distance_cutoff;
-
-        // ??
-        double potential_energy,
-               kinetic_energy,
-               total_energy,
-               temperature;
-
 };
 
 #endif

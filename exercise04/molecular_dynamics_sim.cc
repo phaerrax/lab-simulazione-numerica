@@ -1,23 +1,25 @@
 #include "molecular_dynamics_sim.hh"
-#include <string>
 #include <sstream>
 #include <numeric>
 #include <iomanip>
-#include "random.hh"
+#include <fstream>
+#include <iostream>
+#include <cmath>
+// (string, vector and random.hh included in molecular_dynamics_sim.hh.)
 
-void molecular_dynamics_sim::set_init_config(const std::string & input_parameters_file)
+molecular_dynamics_sim::molecular_dynamics_sim(const std::string & input_parameters_file)
 {   
-    // It is assumed that the random number generator is already initialised.
+    // It is assumed that the random number generator is already initialised,
+    // outside of this class.
 
-    double ep, ek, pr, et, vir; // ??
-
-    std::cout << "Classic Lennard-Jones fluid\n
-                  Molecular dynamics simulation in NVE ensemble\n\n
-                  Interatomic potential v(r) = 4 * [(1/r)^12 - (1/r)^6]\n\n
-                  The program uses Lennard-Jones units" << std::endl;
+    std::cout << "Classic Lennard-Jones fluid\n"
+              << "Molecular dynamics simulation in NVE ensemble\n\n"
+              << "Interatomic potential V(r) = 4 * [(1/r)^12 - (1/r)^6]\n\n"
+              << "The program uses Lennard-Jones units." << std::endl;
 
     // Read the input parameters from a file.
-    std::cout << "Read input parameters from file " << input_parameters_file << "." << std::endl;
+    // They have to be given in a very specific way.
+    std::cout << "Read input parameters from " << input_parameters_file << "." << std::endl;
     std::ifstream input_parameters(input_parameters_file);
 
     input_parameters >> input_temperature;
@@ -39,9 +41,9 @@ void molecular_dynamics_sim::set_init_config(const std::string & input_parameter
     input_parameters >> n_steps;
     input_parameters >> print_steps;
 
-    std::cout << "The program integrates Newton equations with the Verlet method, using\n
-                  Time step: " << time_step << ",\n
-                  Number of steps: " << n_steps << "." << std::endl;
+    std::cout << "The program integrates Newton equations with the Verlet method, using\n"
+              << "Time step: " << time_step << ",\n"
+              << "Number of steps: " << n_steps << "." << std::endl;
 
     input_parameters.close();
     return;
