@@ -331,14 +331,14 @@ void molecular_dynamics_sim::measure() const
                 displacement[d] = quotient(position[i][d] - position[j][d]);
             // In the computation of the potential en include only
             // the pairs whose distance is less than the cutoff radius.
-            distance = std::sqrt(std::inner_product(displacement.begin(), displacement.begin(), displacement.end(), 0.));
+            distance = std::sqrt(std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.));
             if(distance < distance_cutoff)
                 potential_en += 4. * pow(distance, -12) - 4. * pow(distance, -6);
         }          
 
     // Kinetic en (per the particle mass).
     for(auto & v : velocity)
-        kinetic_en += 0.5 * std::inner_product(v.begin(), v.begin(), v.end(), 0.);
+        kinetic_en += 0.5 * std::inner_product(v.begin(), v.end(), v.begin(), 0.);
 
     current_potential_en_density = potential_en / n_particles;
     current_kinetic_en_density   = kinetic_en / n_particles;
