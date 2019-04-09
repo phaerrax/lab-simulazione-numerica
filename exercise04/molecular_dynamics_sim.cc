@@ -247,7 +247,6 @@ void molecular_dynamics_sim::initialise_maxwellboltzmann(double input_temperatur
 void molecular_dynamics_sim::move(void)
 {
     // Move particles using Verlet algorithm.
-    std::vector<std::vector<double>> forces(n_particles);
     unsigned int n_coordinates = position.begin()->size();
     std::vector<double> new_position(n_coordinates);
     for(unsigned int i = 0; i < n_particles; ++i)
@@ -256,12 +255,14 @@ void molecular_dynamics_sim::move(void)
         {
             // Knowing the current position, the previous position and the
             // force exerted on each particle, calculate the following point
-            // in the particle trajectory.
+            // in the particle trajectory:
+            // x(t + s) = 2 * x(t) - x(t - s) + s^2 * f(x(t)).
             new_position[d] = 
                 quotient(
                         2. * position[i][d] - old_position[i][d] + force(i, d) * std::pow(time_step, 2)
                         );
-            // Calculate the current velocity.
+            // Calculate the current velocity:
+            // v(t) = (x(t + s) - x(t - s)) / 2.
             velocity[i][d] = quotient(new_position[d] - old_position[i][d]) / (2. * time_step);
         }
 
@@ -275,7 +276,7 @@ void molecular_dynamics_sim::move(void)
 
 double molecular_dynamics_sim::force(unsigned int this_particle, unsigned int dir) const
 {
-    // Compute forces as -grad V(r).
+    // Compute (adimensional) forces as -grad V(x).
     double f(0), distance;
     unsigned int n_coordinates = position.begin()->size();
     std::vector<double> displacement(n_coordinates);
