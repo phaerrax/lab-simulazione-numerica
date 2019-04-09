@@ -70,15 +70,15 @@ int main()
 
     input_parameters.close();
 
-    molecular_dynamics_sim dynamo("config.0");
+    double total_volume = static_cast<double>(n_particles) / particle_density;
+    double cell_edge_length = std::pow(total_volume, 1. / 3.);
+
+    molecular_dynamics_sim dynamo("config.0", cell_edge_length);
 
     dynamo.set_particle_number(n_particles);
     dynamo.set_particle_density(particle_density);
     dynamo.set_distance_cutoff(distance_cutoff);
     dynamo.set_integration_step(time_step);
-
-    double total_volume = static_cast<double>(n_particles) / particle_density;
-    double cell_edge_length = std::pow(total_volume, 1. / 3.);
 
     std::cout << "Number of particles: "           << n_particles << "\n"
               << "Density of particles: "          << particle_density << "\n"
