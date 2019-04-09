@@ -190,7 +190,7 @@ void molecular_dynamics_sim::initialise_uniform(Random & rng)
     {
         old_position[i].resize(n_coordinates);
         for(unsigned int d = 0; d < n_coordinates; ++d)
-            old_position[i][d] = position[i][d] - velocity[i][d] * time_step;
+            old_position[i][d] = position[i][d] - velocity[i][d] * integration_step;
     }
 
     return;
@@ -217,7 +217,7 @@ void molecular_dynamics_sim::rescale_velocity(double input_temperature)
             velocity[i][d] *= scale_factor;
             // From the initial position and the initial velocity, recalculate
             // the value of the "pre-initial" position.
-            old_position[i][d] = position[i][d] - velocity[i][d] * time_step;
+            old_position[i][d] = position[i][d] - velocity[i][d] * integration_step;
         }
 
     return;
@@ -239,7 +239,7 @@ void molecular_dynamics_sim::initialise_maxwellboltzmann(double input_temperatur
         for(unsigned int d = 0; d < n_coordinates; ++d)
             // From the initial position and the initial velocity, extrapolate
             // a value for the "pre-initial" position.
-            old_position[i][d] = position[i][d] - velocity[i][d] * time_step;
+            old_position[i][d] = position[i][d] - velocity[i][d] * integration_step;
 
     return;
 }
@@ -259,11 +259,11 @@ void molecular_dynamics_sim::move(void)
             // x(t + s) = 2 * x(t) - x(t - s) + s^2 * f(x(t)).
             new_position[d] = 
                 quotient(
-                        2. * position[i][d] - old_position[i][d] + force(i, d) * std::pow(time_step, 2)
+                        2. * position[i][d] - old_position[i][d] + force(i, d) * std::pow(integration_step, 2)
                         );
             // Calculate the current velocity:
             // v(t) = (x(t + s) - x(t - s)) / 2.
-            velocity[i][d] = quotient(new_position[d] - old_position[i][d]) / (2. * time_step);
+            velocity[i][d] = quotient(new_position[d] - old_position[i][d]) / (2. * integration_step);
         }
 
         // Move current position to old position, and new to current.

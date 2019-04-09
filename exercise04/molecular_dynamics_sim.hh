@@ -101,7 +101,6 @@ class molecular_dynamics_sim
         unsigned int n_particles; // Total number of particles in the system.
         double temperature,
                total_volume,
-               time_step,
                particle_density,
                cell_edge_length,
                integration_step,
