@@ -73,8 +73,9 @@ class molecular_dynamics_sim
         // ======
         void write_config(const std::string &) const;
         // Write the final configuration of the system in a file.
-        void write_config_xyz(const std::string &, int) const;
+        void write_config_xyz(const std::string &) const;
         // Write the n-th configuration of the system in a file, in XYZ
+
         // format (to be read by ovito or similar programs).
         // This makes the visualisation of the progressive evolution of the
         // system as the algorithm advances possible.

@@ -96,11 +96,16 @@ int main()
     {
         dynamo.move();
         if(step % print_steps == 0)
-            std::cout << "Number of time-steps: " << step << std::endl;
-        if(step % print_steps == 0)
         {
+            std::cout << "Number of time-steps: " << step << std::endl;
             dynamo.measure();
-            dynamo.write_config_xyz("frames/config_", n_conf);
+            
+            // The integer n_conf distinguishes between the "snapshots"
+            // of the system taken at regular times during the simulation.
+            // The list of config_N.xyz files will be read by an external
+            // program, i.e. ovito, which will be able then to visualise
+            // the evolution of the system.
+            dynamo.write_config_xyz("frames/config_" + std::to_string(n_conf) + ".xyz");
             ++n_conf;
         }
     }

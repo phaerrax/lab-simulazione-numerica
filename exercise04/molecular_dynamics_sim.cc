@@ -380,16 +380,10 @@ void molecular_dynamics_sim::write_config(const std::string & output_file) const
     return;
 }
 
-void molecular_dynamics_sim::write_config_xyz(const std::string & output_file_prefix, int n_conf) const
+void molecular_dynamics_sim::write_config_xyz(const std::string & output_file) const
 { 
     // Write configuration in .xyz format.
-    std::ofstream output(output_file_prefix + std::to_string(n_conf) + ".xyz");
-
-    // The integer n_conf distinguishes between the "snapshots" of the system
-    // taken at regular times during the simulation.
-    // The list of config_N.xyz files will be read by an external program,
-    // i.e. ovito, which will be able then to visualise the evolution of the
-    // system.
+    std::ofstream output(output_file);
 
     // Output formatting.
     output.precision(4);
