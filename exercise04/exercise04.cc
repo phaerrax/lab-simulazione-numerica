@@ -1,10 +1,14 @@
 #include <iostream>
+#include <algorithm>
 #include <fstream>
 #include <cmath>
 #include <string>
+#include <cassert>
 #include <vector>
 #include "random.hh"
 #include "molecular_dynamics_sim.hh"
+
+std::vector<std::vector<double>> block_statistics(const std::vector<double> &, unsigned int);
 
 int main()
 { 
@@ -52,7 +56,7 @@ int main()
     std::cout << "Read input parameters from " << input_parameters_file << "." << std::endl;
     std::ifstream input_parameters(input_parameters_file);
 
-    double temperature,
+    double input_temperature,
            n_particles,
            particle_density,
            distance_cutoff,
@@ -60,7 +64,7 @@ int main()
     unsigned int n_steps,
                  print_steps;
 
-    input_parameters >> temperature
+    input_parameters >> input_temperature
                      >> n_particles
                      >> particle_density
                      >> distance_cutoff
@@ -99,7 +103,7 @@ int main()
     // Generate uniformly distributed velocities, then rescale them in order
     // to match the input temperature.
     dynamo.initialise_uniform(rng);
-    dynamo.rescale_velocity(temperature);
+    dynamo.rescale_velocity(input_temperature);
 
     // Integration of the equations of motion
     // ======================================
@@ -112,30 +116,25 @@ int main()
                   temperature_output("output_temperature.dat"),
                   total_en_output("output_total_en.dat");
 
-    double current_potential_en_density,
-           current_kinetic_en_density,
-           current_temperature,
-           current_total_en_density;
+    unsigned int n_conf(1),
+                 n_blocks(100),
+                 measure_step(10); // Physical measurements will be executed
+                                   // every measure_step steps.
 
-    unsigned int n_conf = 1;
     double progress;
+    dynamo.write_config_xyz("frames/config_0.xyz");
+
+    std::vector<double> potential_en_density,
+                        kinetic_en_density,
+                        temperature;
+
     for(unsigned int step = 1; step <= n_steps; ++step)
     {
         dynamo.move();
-        if(step % print_steps == 0)
+        if(step % measure_step == 0)
         {
             progress = 100 * static_cast<double>(step) / n_steps;
             std::cerr << "\rNumber of time-steps: " << step << " / " << n_steps << " (" << std::round(progress) << "%)";
-
-            current_potential_en_density = dynamo.get_potential_energy_density();
-            current_kinetic_en_density   = dynamo.get_kinetic_energy_density();
-            current_temperature          = dynamo.get_temperature();
-            current_total_en_density     = current_potential_en_density + current_kinetic_en_density;
-
-            potential_en_output << current_potential_en_density << std::endl;
-            kinetic_en_output   << current_kinetic_en_density   << std::endl;
-            temperature_output  << current_temperature          << std::endl;
-            total_en_output     << current_total_en_density     << std::endl;
 
             // The integer n_conf distinguishes between the "snapshots"
             // of the system taken at regular times during the simulation.
@@ -144,11 +143,83 @@ int main()
             // the evolution of the system.
             dynamo.write_config_xyz("frames/config_" + std::to_string(n_conf) + ".xyz");
             ++n_conf;
+
+            potential_en_density.push_back(dynamo.get_potential_energy_density());
+            kinetic_en_density.push_back(dynamo.get_kinetic_energy_density());
+            temperature.push_back(dynamo.get_temperature());
         }
     }
     std::cerr << std::endl;
 
     dynamo.write_config("config.final");
 
+    // Sum potential and kinetic energy together.
+    std::vector<double> total_en_density(potential_en_density.size());
+    std::transform(
+            potential_en_density.begin(), // Beginning of first range;
+            potential_en_density.end(),   // end of first range;
+            kinetic_en_density.begin(),   // beginning of second range;
+            total_en_density.begin(),     // beginning of results range;
+            std::plus<double>()           // binary operation (first, second)
+            );
+
+    // Calculate average values and standard deviation of the measured
+    // physical quantities.
+    std::vector<std::vector<double>> potential_en_density_blocks(block_statistics(potential_en_density, n_blocks)),
+                                     kinetic_en_density_blocks(block_statistics(kinetic_en_density, n_blocks)),
+                                     total_en_density_blocks(block_statistics(total_en_density, n_blocks)),
+                                     temperature_blocks(block_statistics(temperature, n_blocks));
+
+    for(unsigned int j = 0; j < potential_en_density_blocks.size(); ++j)
+    {
+        potential_en_output << potential_en_density_blocks[j][0] << " "
+                            << potential_en_density_blocks[j][1] << "\n";
+        kinetic_en_output   << kinetic_en_density_blocks[j][0]   << " "
+                            << kinetic_en_density_blocks[j][1]   << "\n";
+        total_en_output     << total_en_density_blocks[j][0]     << " "
+                            << total_en_density_blocks[j][1]     << "\n";
+        temperature_output  << temperature_blocks[j][0]          << " "
+                            << temperature_blocks[j][1]          << "\n";
+    }
+    potential_en_output.close();
+    kinetic_en_output.close();
+    total_en_output.close();
+    temperature_output.close();
+
     return 0;
+}
+
+std::vector<std::vector<double>> block_statistics(const std::vector<double> & x, unsigned int n_blocks)
+{
+    unsigned int block_size = static_cast<unsigned int>(std::round(
+            static_cast<double>(x.size()) / n_blocks
+            ));
+
+    // Just to make sure:
+    assert(block_size * n_blocks == x.size());
+
+    double sum(0), sum_sq(0), block_average;
+    std::vector<double> row(2);
+    std::vector<std::vector<double>> result;
+
+    // - sum the values in each block;
+    // - compute the average of that block;
+    // - from the list of averages compute the standard dev of the mean.
+    for(unsigned int i = 0; i < n_blocks; ++i)
+    {
+        block_average = 0;
+        for(unsigned int j = 0; j < block_size; ++j)
+            block_average += x[i * block_size + j];
+        block_average /= block_size;
+        sum           += block_average;
+        sum_sq        += std::pow(block_average, 2);
+        row[0] = sum / (i + 1);
+        if(i > 0)
+            row[1] = std::sqrt((sum_sq / (i + 1) - std::pow(row[0], 2)) / i);
+        else
+            row[1] = 0;
+        ++i;
+        result.push_back(row);
+    }
+    return result;
 }
