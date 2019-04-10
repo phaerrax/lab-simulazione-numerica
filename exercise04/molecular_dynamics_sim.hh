@@ -60,14 +60,13 @@ class molecular_dynamics_sim
         void move();
         // Advance the algorithm one step with the Verlet method.
 
-        void measure() const;
-        // Read some thermodynamic properties of the system, calculated from
-        // its current state.
-        // In order not to use too many resources, the thermodynamical
-        // properties of the system should not be evaluated at each new step,
-        // but only after a certain number of steps, say every tenth step.
-        // This has to be done directly in the program using the class,
-        // by timing the calls to move() and measure().
+        // Extract thermodynamical quantities
+        // ==================================
+        double get_temperature();
+        double get_potential_energy_density() const;
+        double get_kinetic_energy_density();
+        // The temperature and kinetic energy methods, if possible, use the
+        // same calculation of the mean square velocity, to save some time.
 
         // Output
         // ======
@@ -100,11 +99,16 @@ class molecular_dynamics_sim
         // Internal / initial parameters
         unsigned int n_particles; // Total number of particles in the system.
         double temperature,
+               ms_velocity,
                total_volume,
                particle_density,
                cell_edge_length,
                integration_step,
                distance_cutoff;
+
+        // Flags
+        // =====
+        bool ms_velocity_already_computed;
 };
 
 #endif

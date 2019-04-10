@@ -107,6 +107,16 @@ int main()
     // An intermediate snapshot of the system (a list of the position of the
     // particles and some thermodynamical quantities) is printed every
     // 'print_steps' only, to save some time and memory.
+    std::ofstream potential_en_output("output_potential_en.dat"),
+                  kinetic_en_output("output_kinetic_en.dat"),
+                  temperature_output("output_temperature.dat"),
+                  total_en_output("output_total_en.dat");
+
+    double current_potential_en_density,
+           current_kinetic_en_density,
+           current_temperature,
+           current_total_en_density;
+
     unsigned int n_conf = 1;
     for(unsigned int step = 1; step <= n_steps; ++step)
     {
@@ -114,8 +124,17 @@ int main()
         if(step % print_steps == 0)
         {
             std::cout << "Number of time-steps: " << step << std::endl;
-            dynamo.measure();
-            
+
+            current_potential_en_density = dynamo.get_potential_energy_density();
+            current_kinetic_en_density   = dynamo.get_kinetic_energy_density();
+            current_temperature          = dynamo.get_temperature();
+            current_total_en_density     = current_potential_en_density + current_kinetic_en_density;
+
+            potential_en_output << current_potential_en_density << std::endl;
+            kinetic_en_output   << current_kinetic_en_density   << std::endl;
+            temperature_output  << current_temperature          << std::endl;
+            total_en_output     << current_total_en_density     << std::endl;
+
             // The integer n_conf distinguishes between the "snapshots"
             // of the system taken at regular times during the simulation.
             // The list of config_N.xyz files will be read by an external

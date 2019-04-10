@@ -11,6 +11,7 @@ molecular_dynamics_sim::molecular_dynamics_sim(const std::string & initial_confi
 {   
     cell_edge_length = input_cell_edge_length;
     n_particles = 0;
+    ms_velocity_already_computed = false;
 
     // Clear the previous configuration (if there is any).
     position.clear();
@@ -46,6 +47,7 @@ molecular_dynamics_sim::molecular_dynamics_sim(const std::string & initial_confi
 {
     cell_edge_length = input_cell_edge_length;
     n_particles = 0;
+    ms_velocity_already_computed = false;
 
     // Clear the previous configuration (if there is any).
     position.clear();
@@ -246,6 +248,11 @@ void molecular_dynamics_sim::initialise_maxwellboltzmann(double input_temperatur
 
 void molecular_dynamics_sim::move(void)
 {
+    ms_velocity_already_computed = false;
+    // As the algorithm moves to the next step, the previous value of the
+    // mean square velocity is no longer valid since it refers to the
+    // a past state of the system.
+
     // Move particles using Verlet algorithm.
     unsigned int n_coordinates = position.begin()->size();
     std::vector<double> new_position(n_coordinates);
@@ -277,7 +284,7 @@ void molecular_dynamics_sim::move(void)
 double molecular_dynamics_sim::force(unsigned int this_particle, unsigned int dir) const
 {
     // Compute (adimensional) forces as -grad V(x).
-    double f(0), distance;
+    double f(0), sq_distance;
     unsigned int n_coordinates = position.begin()->size();
     std::vector<double> displacement(n_coordinates);
 
@@ -287,43 +294,36 @@ double molecular_dynamics_sim::force(unsigned int this_particle, unsigned int di
         {
             for(unsigned int d = 0; d < n_coordinates; ++d)
                 displacement[d] = quotient(position[this_particle][d] - position[i][d]);
-            distance = std::sqrt(std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.));
-            if(distance < distance_cutoff)
-            {
-                f += displacement[dir] * (48. * std::pow(distance, -14) - 24. * std::pow(distance, -8));
-            }
+            sq_distance = std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.);
+            // In the expression for the force the distance appears in even
+            // powers only, so we don't need to compute the square root.
+            if(sq_distance < std::pow(distance_cutoff, 2))
+                f += displacement[dir] * (48. * std::pow(sq_distance, -7) - 24. * std::pow(sq_distance, -4));
         }
     }
 
     return f;
 }
 
-void molecular_dynamics_sim::measure() const
+double molecular_dynamics_sim::get_temperature()
 {
-    // Compute thermodynamical quantities of the system, and append the
-    // results to the given files.
-    double potential_en(0),
-           kinetic_en(0);
+    if(!ms_velocity_already_computed)
+    {
+        ms_velocity = 0;
+        for(auto & v : velocity)
+            ms_velocity += std::inner_product(v.begin(), v.end(), v.begin(), 0.);
+        ms_velocity_already_computed = true;
+    }
 
-    std::ofstream potential_en_output,
-                  kinetic_en_output,
-                  temperature_output,
-                  total_en_output;
+    return ms_velocity / (3 * n_particles);
+}
 
-    potential_en_output.open("output_epot.dat", std::ios::app);
-    kinetic_en_output.open("output_ekin.dat", std::ios::app);
-    temperature_output.open("output_temp.dat", std::ios::app);
-    total_en_output.open("output_etot.dat", std::ios::app);
-
-    double current_potential_en_density,
-           current_kinetic_en_density,
-           current_temperature,
-           current_total_en_density;
-
-    // Cycle over pairs of particles.
+double molecular_dynamics_sim::get_potential_energy_density() const
+{
     unsigned int n_coordinates = position.begin()->size();
     std::vector<double> displacement(n_coordinates);
-    double distance;
+    double potential_en(0), sq_distance;
+    // Cycle over pairs of particles only.
     for(unsigned int i = 0; i < n_particles - 1; ++i)
         for(unsigned int j = i + 1; j < n_particles; ++j)
         {
@@ -331,31 +331,28 @@ void molecular_dynamics_sim::measure() const
                 displacement[d] = quotient(position[i][d] - position[j][d]);
             // In the computation of the potential en include only
             // the pairs whose distance is less than the cutoff radius.
-            distance = std::sqrt(std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.));
-            if(distance < distance_cutoff)
-                potential_en += 4. * pow(distance, -12) - 4. * pow(distance, -6);
+            sq_distance = std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.);
+            // In the expression for the potential energy the distance appears
+            // in even powers only, so we don't need to compute the square
+            // root.
+            if(sq_distance < std::pow(distance_cutoff, 2))
+                potential_en += 4. * pow(sq_distance, -6) - 4. * pow(sq_distance, -3);
         }          
 
-    // Kinetic en (per the particle mass).
-    for(auto & v : velocity)
-        kinetic_en += 0.5 * std::inner_product(v.begin(), v.end(), v.begin(), 0.);
+    return potential_en / n_particles;
+}
 
-    current_potential_en_density = potential_en / n_particles;
-    current_kinetic_en_density   = kinetic_en / n_particles;
-    current_temperature          = 2. / 3. * kinetic_en / n_particles;
-    current_total_en_density     = (kinetic_en + potential_en) / n_particles;
+double molecular_dynamics_sim::get_kinetic_energy_density()
+{
+    if(!ms_velocity_already_computed)
+    {
+        ms_velocity = 0;
+        for(auto & v : velocity)
+            ms_velocity += std::inner_product(v.begin(), v.end(), v.begin(), 0.);
+        ms_velocity_already_computed = true;
+    }
 
-    potential_en_output << current_potential_en_density << std::endl;
-    kinetic_en_output   << current_kinetic_en_density   << std::endl;
-    temperature_output  << current_temperature          << std::endl;
-    total_en_output     << current_total_en_density     << std::endl;
-
-    potential_en_output.close();
-    kinetic_en_output.close();
-    temperature_output.close();
-    total_en_output.close();
-
-    return;
+    return ms_velocity / (2 * n_particles);
 }
 
 void molecular_dynamics_sim::write_config(const std::string & output_file) const
