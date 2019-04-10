@@ -118,12 +118,14 @@ int main()
            current_total_en_density;
 
     unsigned int n_conf = 1;
+    double progress;
     for(unsigned int step = 1; step <= n_steps; ++step)
     {
         dynamo.move();
         if(step % print_steps == 0)
         {
-            std::cout << "Number of time-steps: " << step << std::endl;
+            progress = 100 * static_cast<double>(step) / n_steps;
+            std::cerr << "\rNumber of time-steps: " << step << " / " << n_steps << " (" << std::round(progress) << "%)";
 
             current_potential_en_density = dynamo.get_potential_energy_density();
             current_kinetic_en_density   = dynamo.get_kinetic_energy_density();
@@ -144,6 +146,8 @@ int main()
             ++n_conf;
         }
     }
+    std::cerr << std::endl;
+
     dynamo.write_config("config.final");
 
     return 0;
