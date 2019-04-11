@@ -104,7 +104,7 @@ int main()
     // to match the input temperature.
     dynamo.initialise_maxwellboltzmann(input_temperature, rng);
     //dynamo.initialise_uniform(rng);
-    //dynamo.rescale_velocity(input_temperature);
+    dynamo.rescale_velocity(input_temperature);
 
     // Integration of the equations of motion
     // ======================================
@@ -114,8 +114,9 @@ int main()
     // 'print_steps' only, to save some time and memory.
     std::ofstream potential_en_output("output_potential_en.dat"),
                   kinetic_en_output("output_kinetic_en.dat"),
+                  total_en_output("output_total_en.dat"),
                   temperature_output("output_temperature.dat"),
-                  total_en_output("output_total_en.dat");
+                  pressure_output("output_pressure.dat");
 
     unsigned int n_conf(1),
                  n_blocks(100),
@@ -127,7 +128,8 @@ int main()
 
     std::vector<double> potential_en_density,
                         kinetic_en_density,
-                        temperature;
+                        temperature,
+                        pressure;
 
     for(unsigned int step = 1; step <= n_steps; ++step)
     {
@@ -144,10 +146,10 @@ int main()
             // the evolution of the system.
             dynamo.write_config_xyz("frames/config_" + std::to_string(n_conf) + ".xyz");
             ++n_conf;
-
             potential_en_density.push_back(dynamo.get_potential_energy_density());
             kinetic_en_density.push_back(dynamo.get_kinetic_energy_density());
             temperature.push_back(dynamo.get_temperature());
+            pressure.push_back(dynamo.get_pressure());
         }
     }
     std::cerr << std::endl;
@@ -169,7 +171,8 @@ int main()
     std::vector<std::vector<double>> potential_en_density_blocks(block_statistics(potential_en_density, n_blocks)),
                                      kinetic_en_density_blocks(block_statistics(kinetic_en_density, n_blocks)),
                                      total_en_density_blocks(block_statistics(total_en_density, n_blocks)),
-                                     temperature_blocks(block_statistics(temperature, n_blocks));
+                                     temperature_blocks(block_statistics(temperature, n_blocks)),
+                                     pressure_blocks(block_statistics(pressure, n_blocks));
 
     for(unsigned int j = 0; j < potential_en_density_blocks.size(); ++j)
     {
@@ -181,11 +184,14 @@ int main()
                             << total_en_density_blocks[j][1]     << "\n";
         temperature_output  << temperature_blocks[j][0]          << " "
                             << temperature_blocks[j][1]          << "\n";
+        pressure_output     << pressure_blocks[j][0]             << " "
+                            << pressure_blocks[j][1]             << "\n";
     }
     potential_en_output.close();
     kinetic_en_output.close();
     total_en_output.close();
     temperature_output.close();
+    pressure_output.close();
 
     return 0;
 }
