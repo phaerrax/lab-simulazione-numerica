@@ -386,6 +386,48 @@ double molecular_dynamics_sim::get_kinetic_energy_density()
     return ms_velocity / (2 * n_particles);
 }
 
+double molecular_dynamics_sim::get_pressure()
+{
+    // We can save some time if the temperature has already been calculated.
+    if(!ms_velocity_already_computed)
+    {
+        ms_velocity = 0;
+        for(auto & v : velocity)
+            ms_velocity += std::inner_product(v.begin(), v.end(), v.begin(), 0.);
+        ms_velocity_already_computed = true;
+    }
+
+    // The pressure is given by
+    // density * Boltzmann constant * temperature + w / (3 * volume)
+    // where w is
+    // 48 * energy_scale * [r(i,j)^-12 - 0.5 * r(i,j)^-6] / n_particles
+    // summed over distinct pairs (i,j), with r(i,j) being the distance
+    // between particles i and j in reduced units.
+    // In reduced units, the volume is 1 so the pressure becomes
+    // density * temperature + w / 3.
+    // (In the calculations below we factored out the 48.)
+    unsigned int n_coordinates = position.begin()->size();
+    std::vector<double> displacement(n_coordinates);
+    double w(0), sq_distance;
+    // Cycle over pairs of particles only.
+    for(unsigned int i = 0; i < n_particles - 1; ++i)
+        for(unsigned int j = i + 1; j < n_particles; ++j)
+        {
+            for(unsigned int d = 0; d < n_coordinates; ++d)
+                displacement[d] = quotient(position[i][d] - position[j][d]);
+            // In the computation of the potential en include only
+            // the pairs whose distance is less than the cutoff radius.
+            sq_distance = std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.);
+            // In the expression for the potential energy the distance appears
+            // in even powers only, so we don't need to compute the square
+            // root.
+            if(sq_distance < std::pow(distance_cutoff, 2))
+                w += pow(sq_distance, -6) - 0.5 * pow(sq_distance, -3);
+        }
+
+    return particle_density * ms_velocity / (3 * n_particles) + 16 * w;
+}
+
 void molecular_dynamics_sim::write_config(const std::string & output_file) const
 { 
     // Write the final configuration on file.

@@ -65,8 +65,10 @@ class molecular_dynamics_sim
         double get_temperature();
         double get_potential_energy_density() const;
         double get_kinetic_energy_density();
-        // The temperature and kinetic energy methods, if possible, use the
-        // same calculation of the mean square velocity, to save some time.
+        double get_pressure();
+        // The temperature, pressure and kinetic energy methods, if possible,
+        // use the same calculation of the mean square velocity, to save
+        // some time.
 
         // Output
         // ======
