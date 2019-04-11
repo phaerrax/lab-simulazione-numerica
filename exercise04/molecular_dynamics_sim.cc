@@ -235,13 +235,44 @@ void molecular_dynamics_sim::initialise_maxwellboltzmann(double input_temperatur
     unsigned int n_coordinates = position.begin()->size();
     // The number of dimensions, i.e. of coordinates of each velocity vector.
 
-    // Sampling...
+    // According to Boltzmann's theory, each component of the velocity
+    // of a particle (under certain hypoteses) follows a normal distribution
+    // with mean 0 and variance (2 * a)^-1, with
+    // a = particle mass / (2 * Boltzmann constant * temperature).
+    // In "Lennard-Jones units", the probability distribution is a normal
+    // distribution with mean 0 and variance equal to the adimensional
+    // temperature.
+    velocity.resize(n_particles);
+    std::vector<double> com_velocity(n_coordinates);
+    for(auto & v : velocity)
+    {
+        v.resize(n_coordinates, 0);
+        for(unsigned int d = 0; d < n_coordinates; ++d)
+        {
+            v[d] = rng.Gauss(0, temperature);
+            com_velocity[d] += v[d];
+        }
+    }
+
+    // Correct the velocities so that there is no overall momentum.
+    // Calculate the centre of mass velocity...
+    for(unsigned int d = 0; d < n_coordinates; ++d)
+        com_velocity[d] /= n_particles;
+
+    // ...and subtract from each velocity the one of the centre of mass.
+    for(auto & v : velocity)
+        for(unsigned int d = 0; d < n_coordinates; ++d)
+            v[d] -= com_velocity[d];
     
+    old_position.resize(n_particles);
     for(unsigned int i = 0; i < n_particles; ++i)
+    {
+        old_position[i].resize(n_coordinates);
         for(unsigned int d = 0; d < n_coordinates; ++d)
             // From the initial position and the initial velocity, extrapolate
             // a value for the "pre-initial" position.
             old_position[i][d] = position[i][d] - velocity[i][d] * integration_step;
+    }
 
     return;
 }

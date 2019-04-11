@@ -102,8 +102,9 @@ int main()
     // =======================
     // Generate uniformly distributed velocities, then rescale them in order
     // to match the input temperature.
-    dynamo.initialise_uniform(rng);
-    dynamo.rescale_velocity(input_temperature);
+    dynamo.initialise_maxwellboltzmann(input_temperature, rng);
+    //dynamo.initialise_uniform(rng);
+    //dynamo.rescale_velocity(input_temperature);
 
     // Integration of the equations of motion
     // ======================================
