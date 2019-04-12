@@ -3,6 +3,7 @@
 
 # ...but track those with selected names
 !*.cc
+!*.tcc
 !*.hh
 !*.ipynb
 !makefile
