@@ -111,6 +111,13 @@ molecular_dynamics_sim::molecular_dynamics_sim(const std::string & initial_confi
     std::vector<std::vector<double>> original_init_position(position),
                                      original_preinit_position(old_position);
 
+    // The move() method requires that the velocity vector is already of
+    // the correct size.
+    unsigned int n_coordinates = position.begin()->size();
+    velocity.resize(n_particles);
+    for(auto & v : velocity)
+        v.resize(n_coordinates);
+
     move();
     // When the integration step is complete, the velocity of the particles
     // is calculated at the time instant corresponding to the initial
