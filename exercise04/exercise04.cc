@@ -10,7 +10,7 @@
 
 std::vector<std::vector<double>> block_statistics(const std::vector<double> &, unsigned int);
 
-int main()
+int main(int argc, char *argv[])
 { 
     // Random number generator initialization
     Random rng;
@@ -45,14 +45,30 @@ int main()
 
     // Initialisation procedure
     // ========================
-    std::cout << "Classic Lennard-Jones fluid\n"
+    // Gather the type of the particle in the system and its thermodinamical
+    // phase from the command-line arguments.
+    if(argc != 3)
+    {
+        std::cerr << "Error: too few arguments." << std::endl;
+        return 1;
+    }
+
+    std::string particle_type(argv[1]),
+                phase(argv[2]);
+
+    // The directory in which the input parameters and output files are
+    // stored.
+    std::string prefix = particle_type + "/" + phase + "/";
+
+    std::cout << "Classic Lennard-Jones fluid: "
+              << particle_type << " in a " << phase << " phase.\n"
               << "Molecular dynamics simulation in NVE ensemble\n\n"
               << "Interatomic potential V(r) = 4 * [(1/r)^12 - (1/r)^6]\n\n"
               << "The program uses Lennard-Jones units." << std::endl;
 
     // Read the input parameters from a file.
     // They have to be given in a very specific way...
-    std::string input_parameters_file("input.dat");
+    std::string input_parameters_file(prefix + "input.dat");
     std::cout << "Read input parameters from " << input_parameters_file << "." << std::endl;
     std::ifstream input_parameters(input_parameters_file);
 
@@ -81,16 +97,16 @@ int main()
     double total_volume = static_cast<double>(n_particles) / particle_density;
     double cell_edge_length = std::pow(total_volume, 1. / 3.);
 
-    molecular_dynamics_sim dynamo("config.0", cell_edge_length);
+    molecular_dynamics_sim dynamo_equilibration("config.0", cell_edge_length);
     // The coordinates in the input files are given in units of the cell
     // edge length (which is itself expressed in "Lennard-Jones units"): the
     // extra parameter in the constructor makes sure that in the simulation
     // the coordinates are properly rescaled.
 
-    dynamo.set_particle_number(n_particles);
-    dynamo.set_particle_density(particle_density);
-    dynamo.set_distance_cutoff(distance_cutoff);
-    dynamo.set_integration_step(time_step);
+    dynamo_equilibration.set_particle_number(n_particles);
+    dynamo_equilibration.set_particle_density(particle_density);
+    dynamo_equilibration.set_distance_cutoff(distance_cutoff);
+    dynamo_equilibration.set_integration_step(time_step);
 
     std::cout << "Number of particles: "           << n_particles << "\n"
               << "Density of particles: "          << particle_density << "\n"
@@ -102,8 +118,43 @@ int main()
     // =======================
     // Generate uniformly distributed velocities, then rescale them in order
     // to match the input temperature.
+    dynamo_equilibration.initialise_maxwellboltzmann(input_temperature, rng);
+    //dynamo_equilibration.initialise_uniform(rng);
+    dynamo_equilibration.rescale_velocity(input_temperature);
+
+    // Equilibration run
+    // =================
+    double progress;
+    std::cerr << "Equilibrating...";
+    for(unsigned int step = 1; step < n_steps; ++step)
+    {
+        dynamo_equilibration.move();
+        if(step % 100 == 0)
+        {
+            progress = 100 * static_cast<double>(step) / n_steps;
+            std::cerr << "\rEquilibrating... " << std::round(progress) << "%";
+        }
+    }
+    std::cerr << "\rEquilibrating... done." << std::endl;
+    // Stop a step before the end: we need to output the second-to-last
+    // configuration, which will be used later to restart the simulation.
+    dynamo_equilibration.write_config("config.prefinal");
+
+    // Move again, for the last time.
+    dynamo_equilibration.move();
+    dynamo_equilibration.write_config("config.final");
+
+
+    // Initialise a new simulator with the final configuration of the
+    // equilibration run.
+    molecular_dynamics_sim dynamo("config.final", "config.prefinal", cell_edge_length);
+
+    dynamo.set_particle_number(n_particles);
+    dynamo.set_particle_density(particle_density);
+    dynamo.set_distance_cutoff(distance_cutoff);
+    dynamo.set_integration_step(time_step);
+
     dynamo.initialise_maxwellboltzmann(input_temperature, rng);
-    //dynamo.initialise_uniform(rng);
     dynamo.rescale_velocity(input_temperature);
 
     // Integration of the equations of motion
@@ -112,18 +163,17 @@ int main()
     // An intermediate snapshot of the system (a list of the position of the
     // particles and some thermodynamical quantities) is printed every
     // 'print_steps' only, to save some time and memory.
-    std::ofstream potential_en_output("output_potential_en.dat"),
-                  kinetic_en_output("output_kinetic_en.dat"),
-                  total_en_output("output_total_en.dat"),
-                  temperature_output("output_temperature.dat"),
-                  pressure_output("output_pressure.dat");
+    std::ofstream potential_en_output(prefix + "output_potential_en.dat"),
+                  kinetic_en_output(prefix + "output_kinetic_en.dat"),
+                  total_en_output(prefix + "output_total_en.dat"),
+                  temperature_output(prefix + "output_temperature.dat"),
+                  pressure_output(prefix + "output_pressure.dat");
 
     unsigned int n_conf(1),
                  n_blocks(100),
                  measure_step(10); // Physical measurements will be executed
                                    // every measure_step steps.
 
-    double progress;
     dynamo.write_config_xyz("frames/config_0.xyz");
 
     std::vector<double> potential_en_density,
