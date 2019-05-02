@@ -3,7 +3,7 @@ CFLAGS = -Wall -O3 --std=c++11
 
 .PHONY: clean
 
-exercise06: exercise06.o random.o
+exercise06: exercise06.o ising_1d_sim.o random.o
 	$(CC) $^ -o $@
 
 %.o: %.cc

@@ -37,79 +37,6 @@ int main()
 }
 
 
-void Input(void)
-{
-  ifstream ReadInput;
-
-  cout << "Classic 1D Ising model             " << endl;
-  cout << "Monte Carlo simulation             " << endl << endl;
-  cout << "Nearest neighbour interaction      " << endl << endl;
-  cout << "Boltzmann weight exp(- beta * H ), beta = 1/T " << endl << endl;
-  cout << "The program uses k_B=1 and mu_B=1 units " << endl;
-
-//Read seed for random numbers
-   int p1, p2;
-   ifstream Primes("Primes");
-   Primes >> p1 >> p2 ;
-   Primes.close();
-
-   ifstream input("seed.in");
-   input >> seed[0] >> seed[1] >> seed[2] >> seed[3];
-   rnd.SetRandom(seed,p1,p2);
-   input.close();
-  
-//Read input informations
-  ReadInput.open("input.dat");
-
-  ReadInput >> temp;
-  beta = 1.0/temp;
-  cout << "Temperature = " << temp << endl;
-
-  ReadInput >> nspin;
-  cout << "Number of spins = " << nspin << endl;
-
-  ReadInput >> J;
-  cout << "Exchange interaction = " << J << endl;
-
-  ReadInput >> h;
-  cout << "External field = " << h << endl << endl;
-    
-  ReadInput >> metro; // if=1 Metropolis else Gibbs
-
-  ReadInput >> nblk;
-
-  ReadInput >> nstep;
-
-  if(metro==1) cout << "The program perform Metropolis moves" << endl;
-  else cout << "The program perform Gibbs moves" << endl;
-  cout << "Number of blocks = " << nblk << endl;
-  cout << "Number of steps in one block = " << nstep << endl << endl;
-  ReadInput.close();
-
-
-//Prepare arrays for measurements
-  iu = 0; //Energy
-  ic = 1; //Heat capacity
-  im = 2; //Magnetization
-  ix = 3; //Magnetic susceptibility
- 
-  n_props = 4; //Number of observables
-
-//initial configuration
-  for (int i=0; i<nspin; ++i)
-  {
-    if(rnd.Rannyu() >= 0.5) s[i] = 1;
-    else s[i] = -1;
-  }
-  
-//Evaluate energy etc. of the initial configuration
-  Measure();
-
-//Print initial values for the potential energy and virial
-  cout << "Initial energy = " << walker[iu]/(double)nspin << endl;
-}
-
-
 void Move(int metro)
 {
   int o;
@@ -136,21 +63,6 @@ double Boltzmann(int sm, int ip)
 {
   double ene = -J * sm * ( s[Pbc(ip-1)] + s[Pbc(ip+1)] ) - h * sm;
   return ene;
-}
-
-void Measure()
-{
-  int bin;
-  double u = 0.0, m = 0.0;
-
-//cycle over spins
-  for (int i=0; i<nspin; ++i)
-  {
-     u += -J * s[i] * s[Pbc(i+1)] - 0.5 * h * (s[i] + s[Pbc(i+1)]);
-// INCLUDE YOUR CODE HERE
-  }
-  walker[iu] = u;
-// INCLUDE YOUR CODE HERE
 }
 
 
@@ -225,12 +137,6 @@ void ConfFinal(void)
   rnd.SaveSeed();
 }
 
-int Pbc(int i)  //Algorithm for periodic boundary conditions
-{
-    if(i >= nspin) i = i - nspin;
-    else if(i < 0) i = i + nspin;
-    return i;
-}
 
 double Error(double sum, double sum2, int iblk)
 {
