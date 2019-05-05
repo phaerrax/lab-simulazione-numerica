@@ -68,8 +68,8 @@ void ising_1d_sim::next_gibbs(Random & rng)
 	for(unsigned int i = 0; i < spins.size(); ++i)
 	{
 		x = inverse_temperature * (interaction_energy * (spins[quotient(i + 1)] + spins[quotient(i - 1)]) + ext_magnetic_field);
-		// The probability that the spin will be -1 is 1 / (1 + e^(-2 * x)).
-		if(rng.Rannyu() * (1. + std::exp(-2. * x)) < 1.)
+		// The probability that the spin will be -1 is 1 / (1 + e^(2 * x)).
+		if(rng.Rannyu() * (1. + std::exp(2. * x)) < 1.)
 			spins[i] = -1;
 		else
 			spins[i] = 1;
