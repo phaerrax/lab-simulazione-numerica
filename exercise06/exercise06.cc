@@ -203,7 +203,7 @@ int main()
 		// Start the simulation.
 		for(unsigned int step = 0; step < equilibration_steps; ++step)
 		{
-			sim.next_metropolis(rng);
+			sim.next_gibbs(rng);
 			sim_zero.next_gibbs(rng);
 		}
 		for(unsigned int step = equilibration_steps; step < n_steps; ++step)
@@ -212,7 +212,7 @@ int main()
 			spin_sum.push_back(sim.get_spin_sum());
 			sq_spin_sum.push_back(sim_zero.get_spin_sum());
 
-			sim.next_metropolis(rng);
+			sim.next_gibbs(rng);
 			sim_zero.next_gibbs(rng);
 		}
 
