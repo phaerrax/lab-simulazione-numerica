@@ -57,7 +57,7 @@ int main()
 	std::cout << "Read input parameters from " << input_parameters_file << "." << std::endl;
 	std::ifstream input_parameters(input_parameters_file);
 
-	double in_temperature,
+	double equilibration_steps,
 		   interaction_energy,
 		   ext_magnetic_field;
 	unsigned int n_spins,
@@ -65,7 +65,7 @@ int main()
 				 n_blocks,
 				 n_steps;
 
-	input_parameters >> in_temperature
+	input_parameters >> equilibration_steps
 	                 >> n_spins
 	                 >> interaction_energy
 	                 >> ext_magnetic_field
@@ -75,10 +75,10 @@ int main()
 
 	input_parameters.close();
 
-	std::cout << "Temperature: "          << in_temperature     << "\n"
-	          << "Number of spins: "      << n_spins            << "\n"
-	          << "Exchange interaction: " << interaction_energy << "\n"
-	          << "External field: "       << ext_magnetic_field << "\n";
+	std::cout << "Equilibration steps: "  << equilibration_steps << "\n"
+	          << "Number of spins: "      << n_spins             << "\n"
+	          << "Exchange interaction: " << interaction_energy  << "\n"
+	          << "External field: "       << ext_magnetic_field  << "\n";
 
 	if(metro==1)
 		std::cout << "The program perform Metropolis moves." << "\n";
@@ -201,7 +201,12 @@ int main()
 		sim_zero.set_external_magnetic_field(0);
 
 		// Start the simulation.
-		for(unsigned int step = 0; step < n_steps; ++step)
+		for(unsigned int step = 0; step < equilibration_steps; ++step)
+		{
+			sim.next_metropolis(rng);
+			sim_zero.next_gibbs(rng);
+		}
+		for(unsigned int step = equilibration_steps; step < n_steps; ++step)
 		{
 			energy.push_back(sim_zero.get_energy());
 			spin_sum.push_back(sim.get_spin_sum());
