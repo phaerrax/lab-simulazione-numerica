@@ -124,15 +124,21 @@ int main()
 
 	// Define the vectors that will hold the measured values, for each value
 	// of the temperature.
-	std::vector<std::pair<double, double>> internal_energy,
-	                                       specific_heat,
-						                   magnetic_susceptibility,
-										   magnetisation;
+	// Each sub-vector represents a different quantity:
+	// [0] internal energy;
+	// [1] specific heat;
+	// [2] magnetic susceptibility;
+	// [3] magnetisation.
+	std::vector<std::vector<std::pair<double, double>>> measurements(4);
+	std::vector<std::string> measurement_names = {
+		"internal_energy",
+		"specific_heat",
+		"magnetic_susceptibility",
+		"magnetisation"
+	};
 
-	internal_energy.reserve(temperatures.size());
-	specific_heat.reserve(temperatures.size());
-	magnetic_susceptibility.reserve(temperatures.size());
-	magnetisation.reserve(temperatures.size());
+	for(auto & m : measurements)
+		m.reserve(temperatures.size());
 
 	// Define the vectors that will hold the measured values, step by step.
 	std::vector<double> energy,      // At zero external field
@@ -154,14 +160,8 @@ int main()
 	// specific heat, and so on.
 	// These progressive quantities will be stored, with the respective
 	// standard deviation, in the following vectors.
-	std::vector<double> avg_current_internal_energy,
-						std_current_internal_energy,
-						avg_current_specific_heat,
-						std_current_specific_heat,
-						avg_current_magnetic_susceptibility,
-						std_current_magnetic_susceptibility,
-						avg_current_magnetisation,
-						std_current_magnetisation;
+	std::vector<std::vector<double>> avg_current_measurements(measurements.size()),
+						             std_current_measurements(measurements.size());
 
 	for(auto temperature : temperatures)
 	{
@@ -170,27 +170,21 @@ int main()
 		sq_energy.clear();
 		spin_sum.clear();
 		sq_spin_sum.clear();
-	    avg_current_internal_energy.clear();
-		std_current_internal_energy.clear();
-		avg_current_specific_heat.clear();
-		std_current_specific_heat.clear();
-		avg_current_magnetic_susceptibility.clear();
-		std_current_magnetic_susceptibility.clear();
-		avg_current_magnetisation.clear();
-		std_current_magnetisation.clear();
-
 		energy.reserve(n_steps);
 		sq_energy.reserve(n_steps);
 		spin_sum.reserve(n_steps);
 		sq_spin_sum.reserve(n_steps);
-	    avg_current_internal_energy.reserve(n_blocks);
-		std_current_internal_energy.reserve(n_blocks);
-		avg_current_specific_heat.reserve(n_blocks);
-		std_current_specific_heat.reserve(n_blocks);
-		avg_current_magnetic_susceptibility.reserve(n_blocks);
-		std_current_magnetic_susceptibility.reserve(n_blocks);
-		avg_current_magnetisation.reserve(n_blocks);
-		std_current_magnetisation.reserve(n_blocks);
+
+	    for(auto & m : avg_current_measurements)
+		{
+			m.clear();
+			m.resize(n_blocks);
+		}
+		for(auto & m : std_current_measurements)
+		{
+			m.clear();
+			m.resize(n_blocks);
+		}
 
 		// Generate an initial configuration.
 		ising_1d_sim sim(n_spins, rng);
@@ -217,6 +211,7 @@ int main()
 			sim_zero.next_gibbs(rng);
 		}
 
+		// Calculate the square of the Hamiltonian and the sum of spins.
 		std::transform(
 				energy.begin(),
 				energy.end(),
@@ -231,97 +226,73 @@ int main()
 				[](double x){return x * x;}
 				);
 
-		// Calculate average values with data blocking.
+		// Calculate average values of the Hamiltonian and the sum of spins
+		// using data blocking... 
 		avg_energy      = block_average(energy, n_blocks);
 		avg_sq_energy   = block_average(sq_energy, n_blocks);
 		avg_spin_sum    = block_average(spin_sum, n_blocks);
 		avg_sq_spin_sum = block_average(sq_spin_sum, n_blocks);
 
-		// Internal energy
-		avg_current_internal_energy = avg_energy;
-		std_current_internal_energy = block_uncertainty(avg_current_internal_energy);
+		// ...and from these values, the progressive average values of the
+		// physical quantities of interest:
+		// [0] internal energy
+		avg_current_measurements[0] = avg_energy;
 
-		// Specific heat
+		// [1] specific heat
 		std::transform(
 				avg_energy.begin(),
 				avg_energy.end(),
 				avg_sq_energy.begin(),
-				std::back_inserter(avg_current_specific_heat),
+				std::back_inserter(avg_current_measurements[1]),
 				[temperature](double h, double h2){
-					return (h2 - h * h) / (temperature * temperature);
+					return (h2 - std::pow(h, 2)) * std::pow(temperature, -2);
 				}
 				);
-		std_current_specific_heat = block_uncertainty(avg_current_specific_heat);
 
-		// Magnetic susceptibility
+		// [2] magnetic susceptibility
 		std::transform(
 				avg_sq_spin_sum.begin(),
 				avg_sq_spin_sum.end(),
-				std::back_inserter(avg_current_magnetic_susceptibility),
+				std::back_inserter(avg_current_measurements[2]),
 				[temperature](double s){
 					return s / temperature;
 					}
 				);
-		std_current_magnetic_susceptibility = block_uncertainty(avg_current_magnetic_susceptibility);
 
-		// Magnetisation
-		avg_current_magnetisation = avg_spin_sum;
-		std_current_magnetisation = block_uncertainty(avg_current_magnetisation);
+		// [3] magnetisation
+		avg_current_measurements[3] = avg_spin_sum;
+
+		// From the list of average values, compute the progressive
+		// uncertainties.
+		for(unsigned int i = 0; i < avg_current_measurements.size(); ++i)
+			std_current_measurements[i] = block_uncertainty(avg_current_measurements[i]);
 
 		// Save the calculated quantities, then repeat.
-		internal_energy.emplace_back(
-				avg_current_internal_energy.back(),
-				std_current_internal_energy.back()
-				);
-		specific_heat.emplace_back(
-				avg_current_specific_heat.back(),
-				std_current_specific_heat.back()
-				);
-		magnetic_susceptibility.emplace_back(
-				avg_current_magnetic_susceptibility.back(),
-				std_current_magnetic_susceptibility.back()
-				);
-		magnetisation.emplace_back(
-				avg_current_magnetisation.back(),
-				std_current_magnetisation.back()
-				);
+		// (The last value of each measurement is taken as the "final" value
+		// of the relative quantity at the current temperature.)
+		for(unsigned int i = 0; i < avg_current_measurements.size(); ++i)
+			measurements[i].emplace_back(
+					avg_current_measurements[i].back(),
+					std_current_measurements[i].back()
+					);
 	}
 
 	const unsigned int col_width = 16;
 
-	std::ofstream output("internal_energy.dat");
+	std::ofstream output;
 	output.precision(4);
 	output << std::scientific;
-	for(unsigned int i = 0; i < temperatures.size(); ++i)
-		output << std::setw(col_width) << temperatures[i]
-		       << std::setw(col_width) << internal_energy[i].first
-		       << std::setw(col_width) << internal_energy[i].second
-			   << "\n";
-	output.close();
 
-	output.open("specific_heat.dat");
-	for(unsigned int i = 0; i < temperatures.size(); ++i)
-		output << std::setw(col_width) << temperatures[i]
-		       << std::setw(col_width) << specific_heat[i].first
-		       << std::setw(col_width) << specific_heat[i].second
-			   << "\n";
-	output.close();
-
-	output.open("magnetic_susceptibility.dat");
-	for(unsigned int i = 0; i < temperatures.size(); ++i)
-		output << std::setw(col_width) << temperatures[i]
-		       << std::setw(col_width) << magnetic_susceptibility[i].first
-		       << std::setw(col_width) << magnetic_susceptibility[i].second
-			   << "\n";
-	output.close();
-
-	output.open("magnetisation.dat");
-	for(unsigned int i = 0; i < temperatures.size(); ++i)
-		output << std::setw(col_width) << temperatures[i]
-		       << std::setw(col_width) << magnetisation[i].first
-		       << std::setw(col_width) << magnetisation[i].second
-			   << "\n";
-	output.close();
+	for(unsigned int i = 0; i < measurements.size(); ++i)
+	{
+		output.open(measurement_names[i] + ".dat");
+		for(unsigned int j = 0; j < temperatures.size(); ++j)
+			output << std::setw(col_width) << temperatures[j]
+				   << std::setw(col_width) << measurements[i][j].first
+				   << std::setw(col_width) << measurements[i][j].second
+				   << "\n";
+		output.close();
+	}
 
 	return 0;
 }
