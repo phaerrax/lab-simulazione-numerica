@@ -42,15 +42,16 @@ void ising_1d_sim::next_metropolis(Random & rng)
 {
 	// Try to flip every spin in the configuration with the Metropolis
 	// algorithm.
-	double acceptance_threshold,
-		   energy_diff;
+	double energy_diff;
 	for(unsigned int i = 0; i < spins.size(); ++i)
 	{
 		energy_diff = 2 * spins[quotient(i)] * (interaction_energy * (spins[quotient(i + 1)] + spins[quotient(i - 1)]) + ext_magnetic_field);
-		acceptance_threshold = std::exp(-inverse_temperature * energy_diff);
-		if(acceptance_threshold < 1)
+        // The acceptance threshold is less than 1 iff the energy difference
+        // is greater than zero; this means that if the energy difference is
+        // less than zero the step is automatically accepted.
+		if(energy_diff > 0.)
 		{
-			if(rng.Rannyu() < acceptance_threshold)
+			if(rng.Rannyu() < std::exp(-inverse_temperature * energy_diff))
 				spins[i] *= -1;
 		}
 		else
