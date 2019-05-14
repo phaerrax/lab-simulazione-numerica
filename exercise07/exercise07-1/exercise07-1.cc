@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 	std::string particle_type(argv[1]),
-                input_parameters_file(particle_type + ".dat");
+                input_parameters_file("input." + particle_type);
 
     std::cout << "Classic Lennard-Jones fluid: "
               << particle_type << "\n"
