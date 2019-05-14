@@ -9,15 +9,13 @@
 #include <iomanip>
 #include <sstream>
 
-metropolis_NVT::metropolis_NVT(const std::string & initial_config_file, double input_cell_edge_length)
+metropolis_NVT::metropolis_NVT(const std::string & initial_config_file, double input_cell_edge_length):
+    cell_edge_length(input_cell_edge_length),
+    particle_density(0),
+    accepted_proposals(0),
+    total_proposals(0),
+    current_configuration()
 {   
-    cell_edge_length = input_cell_edge_length;
-    n_particles = 0;
-    accepted_proposals = 0;
-    total_proposals = 0;
-
-    // Clear the previous configuration (if there is any).
-    current_configuration.clear();
 
     // Read the initial configuration from a file.
     std::cout << "Read initial configuration from file " << initial_config_file << "." << std::endl;

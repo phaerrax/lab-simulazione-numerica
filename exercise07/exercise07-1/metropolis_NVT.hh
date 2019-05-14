@@ -63,10 +63,9 @@ class metropolis_NVT
         // the lattice.
 
         // Internal parameters
-        double total_volume,
+        double cell_edge_length,
                particle_density,
 			   temperature,
-               cell_edge_length,
                distance_cutoff,
 			   current_potential_energy,
 			   stdev;
