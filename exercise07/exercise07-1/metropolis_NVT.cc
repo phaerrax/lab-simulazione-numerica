@@ -110,8 +110,8 @@ void metropolis_NVT::next(Random & rng)
     total_proposals++;
 
     // Calculate the energy of the current and proposed configurations.
-	double energy_diff = interaction_energy(selected_particle, selected_position) - 
-        interaction_energy(selected_particle, proposed_position);
+	double energy_diff = interaction_energy(selected_particle, proposed_position) - 
+        interaction_energy(selected_particle, selected_position);
 
 	if(energy_diff < 0)
 	{
