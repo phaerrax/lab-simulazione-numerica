@@ -1,5 +1,6 @@
 #include "metropolis_NVT.hh"
 #include <algorithm>
+#include <iterator>
 #include <cmath>
 #include <numeric>
 #include <iostream>
@@ -23,23 +24,27 @@ metropolis_NVT::metropolis_NVT(const std::string & initial_config_file, double i
     std::ifstream input_config(initial_config_file);
 
     std::string line, coordinate;
+    std::vector<double> new_point;
 
-    // Read the file line by line.
+    // Read the file line by line, and save each line in a new vector.
     while(std::getline(input_config, line))
     {
-        // Save each line in a new vector.
-        // (The coordinates are given in units of the cell edge length, so
-        // we need to rescale them.)
         std::istringstream iss(line);
-		// We expect that a line consists in all coordinates of a particle.
+		// I expect that a line consists in all coordinates of a particle:
+        // then the number of dimensions of the system is the number of
+        // elements in a line.
 		// The number of lines in the initial config file will be the
 		// number of particles.
+        new_point.clear();
         while(iss >> coordinate)
-            current_configuration.push_back(cell_edge_length * std::stod(coordinate));
+            // The coordinates are given in units of the cell edge length,
+            // so I need to rescale them.
+            new_point.push_back(cell_edge_length * std::stod(coordinate));
 
-        ++n_particles;
+        current_configuration.push_back(new_point);
     }
 
+    n_particles = current_configuration.size();
     input_config.close();
     return;
 }
@@ -73,89 +78,68 @@ double metropolis_NVT::size() const
     return current_configuration.size();
 }
 
+double metropolis_NVT::interaction_energy(unsigned int particle_n, const std::vector<double> & position) const
+{
+	double sq_distance,
+	       energy(0);
+    std::vector<double> displacement;
+	for(unsigned int n = 0; n < n_particles; ++n)
+		if(n != particle_n)
+		{
+            displacement = quotient(position - current_configuration[n]);
+			sq_distance = std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.);
+			if(sq_distance < std::pow(distance_cutoff, 2))
+                // Lennard-Jones potential function.
+				energy += std::pow(sq_distance, -6) - std::pow(sq_distance, -3);
+		}
+
+    return energy * 4;
+}
+
 void metropolis_NVT::next(Random & rng)
 {
 	// Select a particle at random.
 	unsigned int selected_particle = static_cast<unsigned int>(rng.Rannyu(0, n_particles));
-    double acceptance_threshold;
-
-	std::vector<double> selected_position {
-		current_configuration[3 * selected_particle],
-		current_configuration[3 * selected_particle + 1],
-		current_configuration[3 * selected_particle + 2]
-	};
-
-	double x, y, z, d;
-	double old_energy(0);
-	for(unsigned int n = 0; n < n_particles; ++n)
-		if(n != selected_particle)
-		{
-			x = quotient(selected_position[0] - current_configuration[3 * n]);
-			y = quotient(selected_position[1] - current_configuration[3 * n + 1]);
-			z = quotient(selected_position[2] - current_configuration[3 * n + 2]);
-			d = std::hypot(std::hypot(x, y), z);
-
-			if(d < distance_cutoff)
-				old_energy += std::pow(d, -12) - std::pow(d, -6);
-		}
-	old_energy *= 4;
+	std::vector<double> selected_position(current_configuration[selected_particle]);
 
 	// Generate a proposal. 
-	std::vector<double> proposed_position {
-		quotient(selected_position[0] + rng.Gauss(0, stdev)),
-		quotient(selected_position[1] + rng.Gauss(0, stdev)),
-		quotient(selected_position[2] + rng.Gauss(0, stdev))
-	};
+	std::vector<double> proposed_position(selected_position);
+    // Start from the previous position of the particle and move it with a
+    // displacement sampled from a normal distribution.
+    for(double & x : proposed_position)
+		x = quotient(x + rng.Gauss(0, stdev));
 
-	// Calculate the interaction energy in the new configuration.
-	double new_energy(0);
-	for(unsigned int n = 0; n < n_particles; ++n)
-		if(n != selected_particle)
-		{
-			x = quotient(proposed_position[0] - current_configuration[3 * n]);
-			y = quotient(proposed_position[1] - current_configuration[3 * n + 1]);
-			z = quotient(proposed_position[2] - current_configuration[3 * n + 2]);
-			d = std::hypot(std::hypot(x, y), z);
-
-			if(d < distance_cutoff)
-				new_energy += std::pow(d, -12) - std::pow(d, -6);
-		}
-
-	new_energy *= 4;
-
-	double energy_diff = new_energy - old_energy;
     total_proposals++;
+
+    // Calculate the energy of the current and proposed configurations.
+	double energy_diff = interaction_energy(selected_particle, selected_position) - 
+        interaction_energy(selected_particle, proposed_position);
+
 	if(energy_diff < 0)
 	{
 		accepted_proposals++;
-		current_configuration[3 * selected_particle]     = proposed_position[0];
-		current_configuration[3 * selected_particle + 1] = proposed_position[1];
-		current_configuration[3 * selected_particle + 2] = proposed_position[2];
+		current_configuration[selected_particle] = proposed_position;
 	}
 	else
 	{
-		acceptance_threshold = std::exp(-energy_diff / temperature);
+		double acceptance_threshold = std::exp(-energy_diff / temperature);
 		if(rng.Rannyu() < acceptance_threshold)
 		{
 			accepted_proposals++;
-			current_configuration[3 * selected_particle]     = proposed_position[0];
-			current_configuration[3 * selected_particle + 1] = proposed_position[1];
-			current_configuration[3 * selected_particle + 2] = proposed_position[2];
+			current_configuration[selected_particle] = proposed_position;
 		}
 	}
 }
 
 double metropolis_NVT::get_potential_energy_density() const
 {
-    unsigned int n_coordinates = 3;
-    std::vector<double> displacement(n_coordinates);
+    std::vector<double> displacement;
     double potential_en(0), sq_distance;
     // Cycle over pairs of particles only.
-    for(unsigned int i = 0; i < n_particles - 1; ++i)
-        for(unsigned int j = i + 1; j < n_particles; ++j)
+    for(auto x = current_configuration.begin(); x != current_configuration.end(); ++x)
+        for(auto y = x + 1; y != current_configuration.end(); ++y)
         {
-            for(unsigned int d = 0; d < n_coordinates; ++d)
-                displacement[d] = quotient(current_configuration[n_coordinates * i + d] - current_configuration[n_coordinates * j + d]);
+            displacement = quotient(*x - *y);
             // In the computation of the potential en include only
             // the pairs whose distance is less than the cutoff radius.
             sq_distance = std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.);
@@ -179,15 +163,13 @@ double metropolis_NVT::get_pressure() const
     // between particles i and j in reduced units.
     // In reduced units, the volume is 1 so the pressure becomes
     // 48 * w / 3.
-    unsigned int n_coordinates = 3;
-    std::vector<double> displacement(n_coordinates);
+    std::vector<double> displacement;
     double w(0), sq_distance;
     // Cycle over pairs of particles only.
-    for(unsigned int i = 0; i < n_particles - 1; ++i)
-        for(unsigned int j = i + 1; j < n_particles; ++j)
+    for(auto x = current_configuration.begin(); x != current_configuration.end(); ++x)
+        for(auto y = x + 1; y != current_configuration.end(); ++y)
         {
-            for(unsigned int d = 0; d < n_coordinates; ++d)
-                displacement[d] = quotient(current_configuration[n_coordinates * i + d] - current_configuration[n_coordinates * j + d]);
+            displacement = quotient(*x - *y);
             // In the computation of the potential en include only
             // the pairs whose distance is less than the cutoff radius.
             sq_distance = std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.);
@@ -212,14 +194,14 @@ void metropolis_NVT::write_config(const std::string & output_file) const
     output << std::scientific;
     const unsigned int col_width(16);
 
-    unsigned int n_coordinates = 3;
-    for(unsigned int i = 0; i < n_particles; ++i)
+    for(const auto & row : current_configuration)
     {
-        for(unsigned int d = 0; d < n_coordinates; ++d)
+        for(auto x = row.begin(); x != row.end(); ++x)
             // The lengths are output in units of the cell edge length.
-            output << std::setw(col_width) << current_configuration[3 * i + d] / cell_edge_length;
-        output << std::endl;
+            output << std::setw(col_width) << *x / cell_edge_length;
+        output << "\n";
     }
+
     output.close();
     return;
 }
@@ -236,12 +218,11 @@ void metropolis_NVT::write_config_xyz(const std::string & output_file) const
 
     output << n_particles << "\n";
     output << "Simulation of a bunch of molecules interacting with a Lennard-Jones potential\n";
-    unsigned int n_coordinates = 3;
-    for(unsigned int i = 0; i < n_particles; ++i)
+    for(const auto & row : current_configuration)
     {
         output << std::setw(col_width) << "LJ";
-        for(unsigned int d = 0; d < n_coordinates; ++d)
-            output << std::setw(col_width) << quotient(current_configuration[3 * i + d]);
+        for(auto x = row.begin(); x != row.end(); ++x)
+            output << std::setw(col_width) << quotient(*x);
         output << std::endl;
     }
 
@@ -253,7 +234,35 @@ double metropolis_NVT::quotient(double r) const
     return r - cell_edge_length * std::round(r / cell_edge_length);
 }
 
+std::vector<double> metropolis_NVT::quotient(const std::vector<double> & r) const
+{  
+    std::vector<double> result;
+    for(auto x : r)
+        result.push_back(quotient(x));
+
+    return result;
+}
+
 double metropolis_NVT::get_acceptance_rate() const
 {
     return static_cast<double>(accepted_proposals) / total_proposals;
+}
+
+std::vector<double> operator+(const std::vector<double> & lhs, const std::vector<double> & rhs)
+{
+    std::vector<double> result;
+    std::transform(lhs.begin(), lhs.end(), rhs.begin(), std::back_inserter(result), std::plus<double>());
+    return result;
+}
+
+std::vector<double> operator-(const std::vector<double> & v)
+{
+    std::vector<double> result;
+    std::transform(v.begin(), v.end(), std::back_inserter(result), std::negate<double>());
+    return result;
+}
+
+std::vector<double> operator-(const std::vector<double> & lhs, const std::vector<double> & rhs)
+{
+    return lhs + (-rhs);
 }

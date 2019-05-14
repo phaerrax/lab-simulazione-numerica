@@ -52,7 +52,11 @@ class metropolis_NVT
         double get_acceptance_rate() const;
 
     private:
+        double interaction_energy(unsigned int, const std::vector<double> &) const;
+        // Calculates the interaction energy of the particle at the given index, if it were at the given positon.
+
         double quotient(double) const;
+        std::vector<double> quotient(const std::vector<double> &) const;
         // Quotient the position/distance/etc. in order to reduce everything
         // to the unit cell of the lattice.
         // This imposes periodic boundary conditions on the unit cell of
@@ -71,7 +75,7 @@ class metropolis_NVT
 		unsigned int accepted_proposals, total_proposals;
         
         // Holds the current configuration. 
-        std::vector<double> current_configuration;
+        std::vector<std::vector<double>> current_configuration;
         // I could use arrays instead of vectors, and define this class as a
         // template on the number of points, since I believe there are
         // no use cases in which the number of points should change during the
@@ -82,5 +86,9 @@ class metropolis_NVT
         //   same size would be created during the simulation steps, occupying
         //   a lot of space in the stack (this may be an exaggeration...).
 };
+
+std::vector<double> operator-(const std::vector<double> &);
+std::vector<double> operator+(const std::vector<double> &, const std::vector<double> &);
+std::vector<double> operator-(const std::vector<double> &, const std::vector<double> &);
 
 #endif
