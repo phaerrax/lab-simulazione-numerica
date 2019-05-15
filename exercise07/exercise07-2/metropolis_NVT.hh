@@ -4,6 +4,7 @@
 #include "random.hh"
 #include <vector>
 #include <string>
+#include <tuple>
 
 class metropolis_NVT
 {
@@ -46,6 +47,26 @@ class metropolis_NVT
 		std::vector<double> get_radial_distribution(unsigned int, double) const;
 		// Use the given number of bins, discarding the values over the given
 		// threshold.
+
+		// General measurement methods
+		// ===========================
+		std::tuple<double, double, std::vector<double>>
+			measure(unsigned int, double) const;
+		std::tuple<double, double, std::vector<double>>
+			measure(unsigned int) const;
+		// Measure everything at the same time. In order:
+		// - potential energy,
+		// - pressure,
+		// - radial distribution.
+		// Calling the particular function for each quantity to be measured
+		// requires looping over all (distinct) pairs of particles for every
+		// function called, which wastes a lot of time.
+		// Since the potential energy, the pressure and the radial
+		// distribution all require a single loop, they can be effectively
+		// calculated together.
+		// The arguments are those relative to the radial distribution: the
+		// number of bins and the maximum distance visualised in the
+		// histogram (optional).
 
         // Output
         // ======

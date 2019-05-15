@@ -2,7 +2,9 @@
 #include <algorithm>
 #include <fstream>
 #include <cmath>
+#include <utility>
 #include <string>
+#include <tuple>
 #include <cassert>
 #include <iomanip>
 #include <vector>
@@ -132,7 +134,8 @@ int main(int argc, char *argv[])
     // ==========
     //std::ofstream output(particle_type + "_output.dat");
 	std::ofstream avg_rd_output(particle_type + "_output.gofr.0"),
-	              final_rd_output(particle_type + "_output.gave.0");
+	              final_rd_output(particle_type + "_output.gave.0"),
+	              other_output(particle_type + "_output.0");
 
     unsigned int n_conf(1),
 				 snapshot_steps(10);
@@ -143,7 +146,12 @@ int main(int argc, char *argv[])
     //                    pressure;
 
 	std::vector<std::vector<double>> radial_distribution;
+	std::vector<double> potential_en_density,
+						pressure;
+
 	radial_distribution.reserve(n_steps);
+	potential_en_density.reserve(n_steps);
+	pressure.reserve(n_steps);
 
 	double max_distance_rd(0.5 * cell_edge_length);
 	// Stop at this distance when calculating the radial distribution.
@@ -177,12 +185,12 @@ int main(int argc, char *argv[])
             dynamo.write_config_xyz("frames/config_" + std::to_string(n_conf) + ".xyz");
             ++n_conf;
         }
-        //potential_en_density.push_back(dynamo.get_potential_energy_density());
-        //pressure.push_back(dynamo.get_pressure());
-		radial_distribution.push_back(dynamo.get_radial_distribution(n_bins, max_distance_rd));
-		// dynamo.get_radial_distribution(...) here is an rvalue, so this
-		// call to push_back should move it instead of copying it. Fingers
-		// crossed.
+
+		auto results = dynamo.measure(n_bins, max_distance_rd);
+        potential_en_density.push_back(std::get<0>(results));
+        pressure.push_back(std::get<1>(results));
+		radial_distribution.push_back(std::move(std::get<2>(results)));
+		// The results tuple is deleted anyway at the end of the iteration.
     }
     std::cerr << std::endl;
 
@@ -251,18 +259,20 @@ int main(int argc, char *argv[])
 
 	// Output the "final" radial distribution function, with its uncertainty.
 	// The first column contains the upper bound of each bin.
+	final_rd_output << "bin_upper_bound final_rd_avg final_rd_std\n";
     for(unsigned int j = 0; j < rd_final_stdev.size(); ++j)
 		final_rd_output << bin_upper_bounds[j] << " "
 			            << rd_averages[j].back() << " "
 		  	            << rd_final_stdev[j] << "\n";
 	final_rd_output.close();
 
-    //for(unsigned int j = 0; j < potential_en_density.size(); ++j)
-    //{
-    //    output << potential_en_density[j] << " "
-    //           << pressure[j]             << "\n";
-    //}
-    //output.close();
+	other_output << "potential_en_density pressure\n";
+    for(unsigned int j = 0; j < potential_en_density.size(); ++j)
+    {
+        other_output << potential_en_density[j] << " "
+                     << pressure[j]             << "\n";
+    }
+    other_output.close();
 
     std::cerr << "Acceptance rate: " << dynamo.get_acceptance_rate() << std::endl;
 

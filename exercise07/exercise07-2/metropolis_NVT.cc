@@ -245,6 +245,89 @@ double metropolis_NVT::get_pressure() const
     return 16. * w;
 }
 
+std::tuple<double, double, std::vector<double>>
+metropolis_NVT::measure(unsigned int n_bins, double max_distance) const
+{
+    std::vector<double> displacement;
+
+    double distance,
+		   potential_en(0),
+		   pressure(0);
+
+	std::vector<unsigned int> radial_count(n_bins, 0);
+
+	// Partition the interval [0, d_max) in n_bins, as
+	// {p[0], p[1], ..., p[n_bins + 1]},
+	// such that p[0] = 0, p[n_bins] = d_max, and the other values are spaced
+	// uniformly inbetween.
+	// If a value falls between p[i] and p[i + 1], the i-th bin is incremented;
+	// if it is greater than p[n_bins], it is discarded.
+	std::vector<double> partition(n_bins + 1);
+	for(unsigned int i = 0; i < n_bins + 1; ++i)
+		partition[i] = max_distance / n_bins * i;
+
+    // Cycle over pairs of particles only.
+    for(auto x = current_configuration.begin(); x != current_configuration.end(); ++x)
+        for(auto y = x + 1; y != current_configuration.end(); ++y)
+        {
+            displacement = quotient(*x - *y);
+            distance = std::sqrt(std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.));
+
+			// Find out in which bin the distance falls.
+			for(unsigned int i = 1; i < n_bins + 1; ++i)
+			// partition[0] is always zero so distance will always
+			// be greater than that.
+				if(distance < partition[i])
+				{
+					radial_count[i - 1] += 2;
+					// *x is within the given distance from *y, and so is
+					// *y from *x, so this counts as two.
+					break;
+				}
+				// If distance is greater than partition[n_bins], then it is
+				// discarded: nothing has to be done.
+
+			// Potential energy and pressure.
+            if(distance < distance_cutoff)
+			{
+                potential_en += 4. * pow(distance, -12) - 4. * pow(distance, -6);
+                pressure += pow(distance, -12) - 0.5 * pow(distance, -6);
+			}
+
+		}
+
+    potential_en /= n_particles;
+	pressure *= 16;
+
+	// Normalise the histogram.
+	double shell_volume;
+	std::vector<double> inst_radial_distribution(radial_count.size());
+	for(unsigned int i = 0; i < inst_radial_distribution.size(); ++i)
+	{
+		// The volume of the shell with partition[i] as inner radius and
+		// partition[i + 1] as outer radius.
+		shell_volume = 4. * M_PI / 3. * (std::pow(partition[i + 1], 3) - std::pow(partition[i], 3));
+		inst_radial_distribution[i] = radial_count[i] / (particle_density * n_particles * shell_volume);
+	}
+
+	return std::make_tuple(
+			potential_en,
+			pressure,
+			inst_radial_distribution
+			);
+}
+
+std::tuple<double, double, std::vector<double>>
+metropolis_NVT::measure(unsigned int n_bins) const
+{
+	// The system is in a box of edge cell_edge_length, therefore the maximum
+	// possible length (assuming periodic boundary condition) between two
+	// particles is the edge length times sqrt(d), d being the dimension of
+	// the system.
+	unsigned int d = current_configuration.begin()->size();
+	return measure(n_bins, cell_edge_length * std::sqrt(d));
+}
+
 void metropolis_NVT::write_config(const std::string & output_file) const
 { 
     // Write the final configuration on file.
