@@ -1,0 +1,16 @@
+1.2
+108
+0.05
+5.0
+0.0005
+10000
+10
+
+=== Pattern ===
+  temperature
+  n. of particles
+  particle density
+  cutoff radius
+  integration step
+  total n. of steps
+  iprint
