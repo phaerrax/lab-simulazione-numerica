@@ -75,7 +75,7 @@ int main(int argc, char * argv[])
 		double minus = std::exp(-0.5 * std::pow((x + mu) / sigma, 2));
 		return -0.5 * std::pow(sigma, -2) * (
 				(plus + minus) +
-				std::pow(sigma, -2) * ((x - mu) * minus + (x + mu) * plus)
+				std::pow(sigma, -2) * (std::pow(x - mu, 2) * minus + std::pow(x + mu, 2) * plus)
 				);
 	};
 
