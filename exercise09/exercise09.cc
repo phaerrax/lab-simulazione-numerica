@@ -349,7 +349,8 @@ point operator-(const point & a, const point & b)
 
 double distance(const point & a, const point & b)
 {
-	return std::sqrt(std::inner_product(a.begin(), a.end(), b.begin(), 0.));
+	point diff(a - b);
+	return std::sqrt(std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.));
 }
 
 double path_length(const path & p)
