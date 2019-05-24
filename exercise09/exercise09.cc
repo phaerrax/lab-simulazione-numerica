@@ -209,6 +209,20 @@ int main()
 	// Holds the newly generated chromosomes, at each iteration of the loop,
 	// before they are copied in the configuration array.
 
+	// Define a function that draws an integer from 0 to conf_elements, such that
+	// higher values are favoured.
+	auto skewed_draw = [&rng]()
+	// (No need to capture conf_elements, since it's not an automatic variable.
+	// It compiles fine on g++, but it may give an error on other compilers.)
+	{
+		// If x is uniformly distributed in [0, 1), then the pdf of x^p (p > 0) is
+		// 1/p * x^(1/p - 1), therefore higher values are more likely to be drawn
+		// if I choose p < 1. The more p is close to 1, the more the skewed
+		// distribution is close to the uniform one; the more p is close to 0,
+		// the more the distribution is peaked at 1.
+		return static_cast<unsigned int>(conf_elements * std::pow(rng.Rannyu(), 0.8));
+	};
+
 	do
 	{
 		generation++;
@@ -226,10 +240,9 @@ int main()
 
 			// Draw two (distinct) chromosomes from the list.
 			unsigned int parent1, parent2;
-			parent1 = static_cast<unsigned int>(conf_elements * std::pow(rng.Rannyu(), 0.8));
-			// An exponent < 1 ensures that the result is skewed towards 1.
+			parent1 = skewed_draw();
 			do
-				parent2 = static_cast<unsigned int>(conf_elements * std::pow(rng.Rannyu(), 0.8));
+				parent2 = skewed_draw();
 			while(parent1 == parent2);
 
 			chromosome child1, child2;
