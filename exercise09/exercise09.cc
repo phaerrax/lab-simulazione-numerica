@@ -203,84 +203,108 @@ int main()
 	// steps_without_improvements is incremented if the best_fit has not
 	// changed from the previous step.
 	
+	std::vector<chromosome> new_generation;
+	// Holds the newly generated chromosomes, at each iteration of the loop,
+	// before they are copied in the configuration array.
+
 	do
 	{
 		generation++;
 		std::cerr << "\rGeneration #" << generation;
 
-		// Parents selection
-		// =================
-		// Shorter paths are in the last positions of the list of configurations,
-		// therefore the selection algorithm should favour high numbers, so that
-		// fitter chromosomes are more eligible to the "reproduction" process.
+		new_generation.clear();
 
-		// Draw two (distinct) chromosomes from the list.
-		unsigned int parent1, parent2;
-		parent1 = static_cast<unsigned int>(conf_elements * std::pow(rng.Rannyu(), 0.8));
-		// An exponent < 1 ensures that the result is skewed towards 1.
-		do
-			parent2 = static_cast<unsigned int>(conf_elements * std::pow(rng.Rannyu(), 0.8));
-		while(parent1 == parent2);
-
-		// Crossover
-		// =========
-		// Roll for crossover.
-		if(rng.Rannyu() < crossover_probability)
+		while(new_generation.size() < conf_elements)
 		{
-			// Select (randomly) a point at which to cut the chromosomes.
-			unsigned int cut_point = static_cast<unsigned int>(rng.Rannyu(0, n_points));
-			// Define two new chromosomes, and copy the parents' information
-			// up to the cut point.
+			// Parents selection
+			// =================
+			// Shorter paths are in the last positions of the list of configurations,
+			// therefore the selection algorithm should favour high numbers, so that
+			// fitter chromosomes are more eligible to the "reproduction" process.
+
+			// Draw two (distinct) chromosomes from the list.
+			unsigned int parent1, parent2;
+			parent1 = static_cast<unsigned int>(conf_elements * std::pow(rng.Rannyu(), 0.8));
+			// An exponent < 1 ensures that the result is skewed towards 1.
+			do
+				parent2 = static_cast<unsigned int>(conf_elements * std::pow(rng.Rannyu(), 0.8));
+			while(parent1 == parent2);
+
 			chromosome child1, child2;
-			std::copy(
-					chromosomes[parent1].begin(),
-					chromosomes[parent1].begin() + cut_point,
-					child1.begin()
-					);
-			std::copy(
-					chromosomes[parent2].begin(),
-					chromosomes[parent2].begin() + cut_point,
-					child2.begin()
-					);
-			// Complete the chromosomes with the missing cities, adding them in
-			// the order in which they appear in the "other parent" (child1 with
-			// parent2, child2 with parent1).
-			std::copy_if(
-					chromosomes[parent1].begin(),
-					chromosomes[parent1].end(),
-					child2.begin() + cut_point,
-					[&child2, cut_point](unsigned int n)
-					{
-						return std::find(child2.begin(), child2.begin() + cut_point, n) == child2.begin() + cut_point;
-					}
-					);
-			std::copy_if(
-					chromosomes[parent2].begin(),
-					chromosomes[parent2].end(),
-					child1.begin() + cut_point,
-					[&child1, cut_point](unsigned int n)
-					{
-						return std::find(child1.begin(), child1.begin() + cut_point, n) == child1.begin() + cut_point;
-					}
-					);
-			// Finally, replace the parents with their children.
-			std::swap(chromosomes[parent1], child1);
-			std::swap(chromosomes[parent2], child2);
+
+			// Crossover
+			// =========
+			// Roll for crossover.
+			if(rng.Rannyu() < crossover_probability)
+			{
+				// Select (randomly) a point at which to cut the chromosomes.
+				unsigned int cut_point = static_cast<unsigned int>(rng.Rannyu(0, n_points));
+				// Define two new chromosomes, and copy the parents' information
+				// up to the cut point.
+				std::copy(
+						chromosomes[parent1].begin(),
+						chromosomes[parent1].begin() + cut_point,
+						child1.begin()
+						);
+				std::copy(
+						chromosomes[parent2].begin(),
+						chromosomes[parent2].begin() + cut_point,
+						child2.begin()
+						);
+				// Complete the chromosomes with the missing cities, adding them in
+				// the order in which they appear in the "other parent" (child1 with
+				// parent2, child2 with parent1).
+				std::copy_if(
+						chromosomes[parent1].begin(),
+						chromosomes[parent1].end(),
+						child2.begin() + cut_point,
+						[&child2, cut_point](unsigned int n)
+						{
+							return std::find(child2.begin(), child2.begin() + cut_point, n) == child2.begin() + cut_point;
+						}
+						);
+				std::copy_if(
+						chromosomes[parent2].begin(),
+						chromosomes[parent2].end(),
+						child1.begin() + cut_point,
+						[&child1, cut_point](unsigned int n)
+						{
+							return std::find(child1.begin(), child1.begin() + cut_point, n) == child1.begin() + cut_point;
+						}
+						);
+			}
+			else
+			{
+				child1 = chromosomes[parent1];
+				child2 = chromosomes[parent2];
+			}
+
+			// Mutate the two newly generated chromosomes (or their parents, if
+			// crossover didn't happen).
+			for(unsigned int i = 0; i < mutation_processes.size(); ++i)
+			{
+				if(rng.Rannyu() < mutation_probability[i])
+					mutation_processes[i](child1);
+				if(!is_valid(child1))
+					throw std::runtime_error("Mutation " + std::to_string(i) + " resulted in an invalid chromosome: " + to_string(child1));
+				if(rng.Rannyu() < mutation_probability[i])
+					mutation_processes[i](child2);
+				if(!is_valid(child2))
+					throw std::runtime_error("Mutation " + std::to_string(i) + " resulted in an invalid chromosome: " + to_string(child1));
+			}
+
+			// The two new chromosomes are ready.
+			new_generation.push_back(std::move(child1));
+			new_generation.push_back(std::move(child2));
 		}
 
-		// Mutate the two newly generated chromosomes (or their parents, if
-		// crossover didn't happen).
-		for(unsigned int i = 0; i < mutation_processes.size(); ++i)
-		{
-			if(rng.Rannyu() < mutation_probability[i])
-				mutation_processes[i](chromosomes[parent1]);
-			if(!is_valid(chromosomes[parent1]))
-				throw std::runtime_error("Mutation " + std::to_string(i) + " resulted in an invalid chromosome: " + to_string(chromosomes[parent1]));
-			if(rng.Rannyu() < mutation_probability[i])
-				mutation_processes[i](chromosomes[parent2]);
-			if(!is_valid(chromosomes[parent2]))
-				throw std::runtime_error("Mutation " + std::to_string(i) + " resulted in an invalid chromosome: " + to_string(chromosomes[parent1]));
-		}
+		// The new generation is now complete, so we can replace the old
+		// chromosomes with it.
+		std::copy(
+				new_generation.begin(),
+				new_generation.end(),
+				chromosomes.begin()
+				);
 
 		// Sort again the configuration in order of increasing fitness.
 		// Now, the last chromosome is the candidate for the minimum
