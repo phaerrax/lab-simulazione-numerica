@@ -24,10 +24,10 @@ double path_length(const path &);
 // A chromosome is a particular path, represented by an array of integers
 // which indicate the order in which the cities are to be visited.
 using chromosome = std::array<unsigned int, n_points>;
+std::string print(const chromosome &);
 // A configuration is a set of chromosomes.
 using configuration = std::array<chromosome, conf_elements>;
 bool is_valid(const chromosome &);
-std::string to_string(const chromosome &);
 
 int main()
 { 
@@ -301,11 +301,11 @@ int main()
 				if(rng.Rannyu() < mutation_probability[i])
 					mutation_processes[i](child1);
 				if(!is_valid(child1))
-					throw std::runtime_error("Mutation " + std::to_string(i) + " resulted in an invalid chromosome: " + to_string(child1));
+					throw std::runtime_error("Mutation " + std::to_string(i) + " resulted in an invalid chromosome: " + print(child1));
 				if(rng.Rannyu() < mutation_probability[i])
 					mutation_processes[i](child2);
 				if(!is_valid(child2))
-					throw std::runtime_error("Mutation " + std::to_string(i) + " resulted in an invalid chromosome: " + to_string(child1));
+					throw std::runtime_error("Mutation " + std::to_string(i) + " resulted in an invalid chromosome: " + print(child1));
 			}
 
 			// The two new chromosomes are ready.
@@ -412,7 +412,7 @@ bool is_valid(const chromosome & c)
 	return std::is_permutation(c.begin(), c.end(), test.begin());
 }
 
-std::string to_string(const chromosome & c)
+std::string print(const chromosome & c)
 {
 	std::string s;
 	for(unsigned int i = 0; i < c.size() - 1; ++i)
