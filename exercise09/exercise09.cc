@@ -104,7 +104,7 @@ int main()
 	// This vector contains the probability of each mutation process to occur.
 	std::array<double, n_mutation_processes> mutation_probability;
 	for(auto & p : mutation_probability)
-		p = 0.02;
+		p = 0.01;
 
 	// 1. Pair swap
 	mutation_processes[0] = [&rng](chromosome & c)
@@ -198,7 +198,7 @@ int main()
 	// Hold the shortest path at each step, and its previous step.
 	double crossover_probability(0.8);
 	unsigned int steps_without_improvements(0),
-	             max_steps_without_improvements(20),
+	             max_steps_without_improvements(100),
 				 generation(0);
 	// If the algorithm is "stuck" for more than the given number 
 	// of steps, then exit and return the best fit.
@@ -220,7 +220,7 @@ int main()
 		// if I choose p < 1. The more p is close to 1, the more the skewed
 		// distribution is close to the uniform one; the more p is close to 0,
 		// the more the distribution is peaked at 1.
-		return static_cast<unsigned int>(conf_elements * std::pow(rng.Rannyu(), 0.8));
+		return static_cast<unsigned int>(conf_elements * std::pow(rng.Rannyu(), 0.5));
 	};
 
 	do
