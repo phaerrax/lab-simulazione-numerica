@@ -102,7 +102,9 @@ int main()
 	// The mutation processes are grouped in a vector.
 	std::array<std::function<void (chromosome &)>, n_mutation_processes> mutation_processes;
 	// This vector contains the probability of each mutation process to occur.
-	std::array<double, n_mutation_processes> mutation_probability {0.02, 0.02, 0.02, 0.02};
+	std::array<double, n_mutation_processes> mutation_probability;
+	for(auto & p : mutation_probability)
+		p = 0.02;
 
 	// 1. Pair swap
 	mutation_processes[0] = [&rng](chromosome & c)
