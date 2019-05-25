@@ -1,4 +1,6 @@
 #include <iostream>
+#include <functional>
+#include <numeric>
 #include <exception>
 #include <iomanip>
 #include <iterator>
@@ -60,7 +62,9 @@ int main()
         input.close();
     }
     else
+    {
         std::cerr << "Unable to open seed.in." << std::endl;
+    }
 
 	// Define the list of cities
 	// =========================
