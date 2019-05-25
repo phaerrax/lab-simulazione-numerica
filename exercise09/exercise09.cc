@@ -227,7 +227,9 @@ int main()
 		return static_cast<unsigned int>(conf_elements * std::pow(rng.Rannyu(), 0.5));
 	};
 
-	std::ofstream output_evolution("evolution.dat");
+	std::ofstream output_evolution("evolution.dat"),
+	              output_best_fit_length("best_fit_length.dat"),
+	              output_averaged_best_length("averaged_best_length.dat");
 
 	do
 	{
@@ -345,11 +347,26 @@ int main()
 		if(best_fit == previous_best_fit)
 			steps_without_improvements++;
 
+        // Output the current configuration.
 		output_evolution << generation << " " << print(best_fit) << "\n";
+        // Output the length of the fittest chromosome.
+        // (The fitness is defined as the opposite of the
+        // path length.)
+        output_best_fit_length << generation << " " << -fitness(best_fit) << "\n";
+        // Output the average length of the first half of the
+        // chromosomes (i.e. the fittest ones).
+        int half_n_chromosomes = static_cast<int>(0.5 * chromosomes.size());
+        double avg_fitness = 0;
+        for(auto p = chromosomes.begin(); p != chromosomes.begin() + half_n_chromosomes; ++p)
+            avg_fitness += -fitness(*p);
+        avg_fitness /= half_n_chromosomes;
+        output_averaged_best_length << generation << " " << avg_fitness << "\n";
 	}
 	while(steps_without_improvements < max_steps_without_improvements);
 
 	output_evolution.close();
+    output_best_fit_length.close();
+    output_averaged_best_length.close();
 
 	// Output procedures
 	// =================
