@@ -223,6 +223,8 @@ int main()
 		return static_cast<unsigned int>(conf_elements * std::pow(rng.Rannyu(), 0.5));
 	};
 
+	std::ofstream output_evolution("evolution.dat");
+
 	do
 	{
 		generation++;
@@ -338,8 +340,12 @@ int main()
 
 		if(best_fit == previous_best_fit)
 			steps_without_improvements++;
+
+		output_evolution << generation << " " << print(best_fit) << "\n";
 	}
 	while(steps_without_improvements < max_steps_without_improvements);
+
+	output_evolution.close();
 
 	// Output procedures
 	// =================
@@ -358,10 +364,6 @@ int main()
 	}
 	cities_output_file.close();
 
-	// Output the minimum configuration on a file.
-	std::ofstream minimum_output_file("minimum.dat");
-	std::ostream_iterator<unsigned int> minimum_output(minimum_output_file, "\n");
-	std::copy(best_fit.begin(), best_fit.end(), minimum_output);
 	return 0;
 }
 
