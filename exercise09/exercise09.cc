@@ -31,7 +31,7 @@ std::string print(const chromosome &);
 using configuration = std::array<chromosome, conf_elements>;
 bool is_valid(const chromosome &);
 
-int main()
+int main(int argc, char ** argv)
 { 
     // Random number generator initialization
     Random rng;
@@ -68,15 +68,39 @@ int main()
 
 	// Define the list of cities
 	// =========================
+    if(argc != 2)
+    {
+        std::cerr << "Invalid input. Please specify \"circle\" or \"square\"." << std::endl;
+        return 1;
+    }
+    std::string type(argv[1]);
 	std::vector<point> cities;
 	unsigned int generated_cities(0);
 	while(generated_cities <= 30)
 	{
-		// Generate a point on the unit circumference.
-		double x, y, angle;
-		angle = rng.Rannyu(0, 2 * M_PI);
-		x = std::cos(angle);
-		y = std::sin(angle);
+        double x, y;
+        if(type == "circle")
+        {
+            // Generate a point on the unit circumference.
+            double angle;
+            angle = rng.Rannyu(0, 2 * M_PI);
+            x = std::cos(angle);
+            y = std::sin(angle);
+        }
+        else 
+        {
+            if(type == "square")
+            {
+                // Generate a point inside a square.
+                x = rng.Rannyu(-1, 1);
+                y = rng.Rannyu(-1, 1);
+            }
+            else
+            {
+                std::cerr << "Invalid input. Please specify \"circle\" or \"square\"." << std::endl;
+                return 1;
+            }
+        }
 		point p {x, y};
 		// If there isn't already a city in that position, add it
 		// to the list.
@@ -227,9 +251,9 @@ int main()
 		return static_cast<unsigned int>(conf_elements * std::pow(rng.Rannyu(), 0.5));
 	};
 
-	std::ofstream output_evolution("evolution.dat"),
-	              output_best_fit_length("best_fit_length.dat"),
-	              output_averaged_best_length("averaged_best_length.dat");
+	std::ofstream output_evolution("evolution_" + type + ".dat"),
+	              output_best_fit_length("best_fit_length_" + type + ".dat"),
+	              output_averaged_best_length("averaged_best_length_" + type + ".dat");
 
 	do
 	{
