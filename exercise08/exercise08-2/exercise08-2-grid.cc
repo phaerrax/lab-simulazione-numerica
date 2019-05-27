@@ -99,17 +99,17 @@ int main(int argc, char * argv[])
 
 			auto trial_wf_2nd = [mu, sigma](std::array<double, dim> r) {
 				double x = r[0];
-				double plus  = std::exp(-0.5 * std::pow((x - mu) / sigma, 2));
-				double minus = std::exp(-0.5 * std::pow((x + mu) / sigma, 2));
-				return -0.5 * std::pow(sigma, -2) * (
-						(plus + minus) +
+				double plus  = std::exp(-0.5 * std::pow((x + mu) / sigma, 2)),
+				       minus = std::exp(-0.5 * std::pow((x - mu) / sigma, 2));
+				return std::pow(sigma, -2) * (
+						-(plus + minus) +
 						std::pow(sigma, -2) * (std::pow(x - mu, 2) * minus + std::pow(x + mu, 2) * plus)
 						);
 			};
 
 			auto potential_energy = [](std::array<double, dim> r) {
 				double x = r[0];
-				return std::pow(x, 4) - 5. / 2. * std::pow(x, 2);
+				return (std::pow(x, 2) - 2.5) * std::pow(x, 2);
 			};
 
 			auto energy = [mu, sigma, trial_wf, trial_wf_2nd, potential_energy](std::array<double, dim> r) {
@@ -118,11 +118,10 @@ int main(int argc, char * argv[])
 
 			unsigned int n_steps(1e6);
 			std::array<double, dim> new_point;
-			std::vector<double> energy_samples, sequence;
+			std::vector<double> energy_samples;
 			for(unsigned int n = 0; n < n_steps; ++n)
 			{
 				new_point = metro.step(pdf, rng);
-				sequence.push_back(new_point[0]);
 				energy_samples.push_back(energy(new_point));
 			}
 
