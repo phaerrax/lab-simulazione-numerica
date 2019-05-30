@@ -8,38 +8,7 @@
 
 int main(int argc, char *argv[])
 {
-    // Prepare the random number generator
-    Random rnd;
-    int seed[4];
-    int p1, p2;
-    std::ifstream Primes("Primes");
-    if(Primes.is_open())
-    {
-        Primes >> p1 >> p2 ;
-    }
-    else
-        std::cerr << "Unable to open Primes." << std::endl;
-    Primes.close();
-
-    std::ifstream input("seed.in");
-    std::string property;
-    if(input.is_open())
-    {
-        while(!input.eof())
-        {
-            input >> property;
-            if(property == "RANDOMSEED")
-            {
-                input >> seed[0] >> seed[1] >> seed[2] >> seed[3];
-                rnd.SetRandom(seed,p1,p2);
-            }
-        }
-        input.close();
-    }
-    else
-        std::cerr << "Unable to open seed.in." << std::endl;
-
-    // Start of exercise 01.1
+	lsn::random rng("Primes", "seed.in");
 
     const int n_blocks(100);
     const int n_throws(1000); // (Inside each block.)
@@ -53,7 +22,7 @@ int main(int argc, char *argv[])
     // distance from the expected mean value (i.e. 1/2); from these data we
     // can compute the average value and the standard deviation of the set.
     for(auto p = r.begin(); p != r.end(); ++p)
-        *p = rnd.Rannyu();
+        *p = rng.uniform();
 
     std::vector<int> x(n_blocks); // Block indices.
     // Fill x with sequentially increasing values, starting from 0 and
@@ -188,6 +157,5 @@ int main(int argc, char *argv[])
         output << i << " " << chisquared_values[i] << std::endl;
     output.close();
 
-    rnd.SaveSeed();
     return 0;
 }
