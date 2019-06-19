@@ -1,10 +1,12 @@
 CC = g++
-CFLAGS = -Wall -O3 --std=c++11
+SRCDIR = ../..
+INCLUDE = $(SRCDIR)/include
+CFLAGS = -Wall -O3 --std=c++11 -I$(INCLUDE)
 
-exercise01-1: exercise01-1.o random.o statistics.hh
+exercise01-1: exercise01-1.o random.o $(INCLUDE)/statistics.hh
 	$(CC) random.o exercise01-1.o -o exercise01-1
 
-exercise01-1.o: exercise01-1.cc statistics.hh
+exercise01-1.o: exercise01-1.cc $(INCLUDE)/statistics.hh
 	$(CC) -c exercise01-1.cc -o exercise01-1.o $(CFLAGS)
 
 random.o: random.cc random.hh
