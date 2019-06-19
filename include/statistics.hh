@@ -1,4 +1,8 @@
+#ifndef STATISTICS_HH
+#define STATISTICS_HH
+
 #include <iterator>
+#include <cmath>
 #include <numeric>
 
 template <class ForwardIterator, class OutputIterator1, class OutputIterator2>
@@ -49,3 +53,5 @@ void block_statistics(ForwardIterator first, ForwardIterator last, OutputIterato
         // and the operator++ has no effect on them.
     }
 }
+
+#endif
