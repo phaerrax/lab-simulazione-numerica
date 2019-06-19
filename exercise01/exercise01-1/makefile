@@ -1,10 +1,10 @@
 CC = g++
 CFLAGS = -Wall -O3 --std=c++11
 
-exercise01-1: exercise01-1.o random.o
+exercise01-1: exercise01-1.o random.o statistics.hh
 	$(CC) random.o exercise01-1.o -o exercise01-1
 
-exercise01-1.o: exercise01-1.cc
+exercise01-1.o: exercise01-1.cc statistics.hh
 	$(CC) -c exercise01-1.cc -o exercise01-1.o $(CFLAGS)
 
 random.o: random.cc random.hh

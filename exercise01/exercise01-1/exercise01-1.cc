@@ -5,6 +5,7 @@
 #include <cmath>
 #include <vector>
 #include "random.hh"
+#include "statistics.hh"
 
 int main(int argc, char *argv[])
 {
@@ -45,82 +46,45 @@ int main(int argc, char *argv[])
     const int n_throws(1000); // (Inside each block.)
     int total_n_throws = n_throws * n_blocks;
 
-    std::vector<double> r(total_n_throws);
+    std::vector<double> r(total_n_throws),
+                        r_var;
     // The test
     // --------
     // We draw a certain number of (supposedly) uniformly distributed numbers.
     // For each draw, we save it in a vector, we calculate its squared
     // distance from the expected mean value (i.e. 1/2); from these data we
     // can compute the average value and the standard deviation of the set.
-    for(auto p = r.begin(); p != r.end(); ++p)
-        *p = rnd.Rannyu();
+    for(auto & p : r)
+    {
+        p = rnd.Rannyu();
+        r_var.push_back(std::pow(p - 0.5, 2));
+    }
 
     std::vector<int> x(n_blocks); // Block indices.
     // Fill x with sequentially increasing values, starting from 0 and
     // adding 1 each time.
     std::iota(x.begin(), x.end(), 0);
 
-    std::vector<double> average(n_blocks), // Average value WITHIN each block.
-                        variance(n_blocks), // Variance WITHIN each block.
-                        average_avg(n_blocks), // Average of all the blocks.
-                        variance_avg(n_blocks),
-                        average_std(n_blocks), // St dev of all the blocks.
-                        variance_std(n_blocks),
-                        squared_average(n_blocks),
-                        squared_variance(n_blocks);
+    std::vector<double> average_avg, // Average of all the blocks.
+                        variance_avg,
+                        average_std, // St dev of all the blocks.
+                        variance_std;
 
-    double partial_sum_average,
-           partial_sum_variance;
-    for(unsigned int i = 0; i < x.size(); ++i) // Loop for each block.
-    {
-        // Compute the average of the drawn numbers in the i-th block.
-        partial_sum_average  = 0;
-        partial_sum_variance = 0;
-        for(unsigned int j = 0; j < n_throws; ++j)
-        {
-            partial_sum_average  += r[n_throws * i + j];
-            partial_sum_variance += std::pow(r[n_throws * i + j] - 0.5, 2);
-        }
-        average[i]          = partial_sum_average / n_throws; 
-        variance[i]         = partial_sum_variance / n_throws;
-        // For each block the std deviation of the average value from 1/2
-        // can be computed using the formula given at the end of the notebook;
-        // ditto for the variance, whose expected value is 1/12.
-        // For this purpose we will need the squares of the values above.
-        squared_average[i]  = std::pow(average[i], 2);
-        squared_variance[i] = std::pow(variance[i], 2);
-    }
+    block_statistics(
+            std::begin(r),
+            std::end(r),
+            std::back_inserter(average_avg),
+            std::back_inserter(average_std),
+            n_throws
+            );
 
-    double sum_average, // Average of the avg values of the first i blocks.
-           sum_variance, // Same but for the variance.
-           sum_squared_average,
-           sum_squared_variance;
-    for(unsigned int i = 0; i < x.size(); ++i)
-    {
-        sum_average = 0;
-        sum_variance = 0;
-        sum_squared_average = 0;
-        sum_squared_variance = 0;
-        for(unsigned int j = 0; j <= i; ++j)
-        {
-            sum_average          += average[j];
-            sum_variance         += variance[j];
-            sum_squared_average  += std::pow(average[j], 2);
-            sum_squared_variance += std::pow(variance[j], 2);
-        }
-        average_avg[i]  = sum_average / (i + 1); // (i runs from 0 to n_blocks - 1.)
-        variance_avg[i] = sum_variance / (i + 1);
-        if(i > 0)
-        {
-            average_std[i]  = std::sqrt((sum_squared_average / (i + 1) - std::pow(average_avg[i], 2)) / i);
-            variance_std[i] = std::sqrt((sum_squared_variance / (i + 1)- std::pow(variance_avg[i], 2)) / i);
-        }
-        else
-        {
-            average_std[i]  = 0;
-            variance_std[i] = 0;
-        }
-    }
+    block_statistics(
+            std::begin(r_var),
+            std::end(r_var),
+            std::back_inserter(variance_avg),
+            std::back_inserter(variance_std),
+            n_throws
+            );
 
     for(unsigned int i = 0; i < x.size(); ++i)
         x[i] *= n_throws;
