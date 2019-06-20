@@ -10,8 +10,7 @@
 #include <vector>
 #include "random.hh"
 #include "metropolis_NVT.hh"
-
-std::vector<std::vector<double>> block_statistics(const std::vector<double> &, unsigned int);
+#include "statistics.hh"
 
 int main(int argc, char *argv[])
 { 
@@ -223,16 +222,20 @@ int main(int argc, char *argv[])
 
 	for(unsigned int i = 0; i < tr_radial_distribution.size(); ++i)
 	{
-		auto v = block_statistics(tr_radial_distribution[i], 100);
-		// For each bin of the histogram, we get a vector of pairs
-		// (average, stdev). I am only interested in the averages
-		// and in the final stdev.
-		for(const auto & pair : v)
-			rd_averages[i].push_back(pair.front());
-			// rd_averages[i] will be a n_blocks-long vector; its elements
-			// are the block averages of the i-th bin.
-			// rd_averages itself has n_bins elements.
-		rd_final_stdev[i] = v.back().back();
+        std::vector<double> err;
+		block_statistics(
+                std::begin(tr_radial_distribution[i]),
+                std::end(tr_radial_distribution[i]),
+                std::back_inserter(rd_averages[i]),
+                std::back_inserter(err),
+                tr_radial_distribution[i].size() / 100
+                );
+		// I am only interested in the averages and in the final stdev.
+
+        // rd_averages[i] will be a n_blocks-long vector; its elements
+        // are the block averages of the i-th bin.
+        // rd_averages itself has n_bins elements.
+		rd_final_stdev[i] = err.back();
 	}
 
 	// Output the block averages of the radial distribution function.
@@ -277,38 +280,4 @@ int main(int argc, char *argv[])
     std::cerr << "Acceptance rate: " << dynamo.get_acceptance_rate() << std::endl;
 
     return 0;
-}
-
-std::vector<std::vector<double>> block_statistics(const std::vector<double> & x, unsigned int n_blocks)
-{
-    unsigned int block_size = static_cast<unsigned int>(std::round(
-            static_cast<double>(x.size()) / n_blocks
-            ));
-
-    // Just to make sure:
-    assert(block_size * n_blocks == x.size());
-
-    double sum(0), sum_sq(0), block_average;
-    std::vector<double> row(2);
-    std::vector<std::vector<double>> result;
-
-    // - sum the values in each block;
-    // - compute the average of that block;
-    // - from the list of averages compute the standard dev of the mean.
-    for(unsigned int i = 0; i < n_blocks; ++i)
-    {
-        block_average = 0;
-        for(unsigned int j = 0; j < block_size; ++j)
-            block_average += x[i * block_size + j];
-        block_average /= block_size;
-        sum           += block_average;
-        sum_sq        += std::pow(block_average, 2);
-        row[0]         = sum / (i + 1);
-        if(i > 0)
-            row[1] = std::sqrt((sum_sq / (i + 1) - std::pow(row[0], 2)) / i);
-        else
-            row[1] = 0;
-        result.push_back(row);
-    }
-    return result;
 }

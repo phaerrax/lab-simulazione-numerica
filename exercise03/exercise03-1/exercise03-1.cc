@@ -5,6 +5,7 @@
 #include <cmath>
 #include <vector>
 #include "random.hh"
+#include "statistics.hh"
 
 int main(int argc, char *argv[])
 {
@@ -58,55 +59,48 @@ int main(int argc, char *argv[])
 				 risk_free_interest_rate(0.1),
 				 volatility(0.25);
 
-	const unsigned int n_blocks(100),
-					   block_size(10000);
-
-	double call_estimates_sum(0),
-		   call_squared_estimates_sum(0),
-	       put_estimates_sum(0),
-		   put_squared_estimates_sum(0);
+	const unsigned int n_data(1e6),
+					   block_size(1e4);
 	
-	std::vector<double> avg_call_option_price(n_blocks),
-	                    avg_put_option_price(n_blocks),
-	                    std_call_option_price(n_blocks),
-	                    std_put_option_price(n_blocks);
+    std::vector<double> call_profit,
+                        put_profit,
+                        avg_call_option_price,
+	                    std_call_option_price,
+	                    avg_put_option_price,
+	                    std_put_option_price;
 
-	double call_profit, put_profit, expiry_price;
-	for(unsigned int i = 0; i < n_blocks; ++i)
+    call_profit.reserve(n_data);
+    put_profit.reserve(n_data);
+
+	double expiry_price;
+	for(unsigned int i = 0; i < n_data; ++i)
 	{
-		call_profit = 0;
-		put_profit  = 0;
-		for(unsigned int j = 0; j < block_size; ++j)
-		{
-			// Sample the final asset price with a geometric Browian motion
-			// simulation.
-			expiry_price = starting_asset_price * std::exp(expiry * (risk_free_interest_rate - 0.5 * std::pow(volatility, 2)) + volatility * rnd.Gauss(0, expiry));
-			call_profit  += std::exp(-risk_free_interest_rate * expiry) * std::max(expiry_price - strike_price, 0.);
-			put_profit   += std::exp(-risk_free_interest_rate * expiry) * std::max(strike_price - expiry_price, 0.);
-		}
-		call_profit /= block_size;
-		call_estimates_sum += call_profit;
-		call_squared_estimates_sum += std::pow(call_profit, 2);
-		avg_call_option_price[i] = call_estimates_sum / (i + 1);
-		put_profit /= block_size;
-		put_estimates_sum += put_profit;
-		put_squared_estimates_sum += std::pow(put_profit, 2);
-		avg_put_option_price[i] = put_estimates_sum / (i + 1);
-		if(i > 0)
-		{
-			std_call_option_price[i] = std::sqrt((call_squared_estimates_sum / (i + 1) - std::pow(avg_call_option_price[i], 2)) / i);
-			std_put_option_price[i]  = std::sqrt((put_squared_estimates_sum / (i + 1) - std::pow(avg_put_option_price[i], 2)) / i);
-		}
-		else
-		{
-			std_call_option_price[i] = 0;
-			std_put_option_price[i]  = 0;
-		}
-	}
+        // Sample the final asset price with a geometric Browian motion
+        // simulation.
+        expiry_price = starting_asset_price * std::exp(expiry * (risk_free_interest_rate - 0.5 * std::pow(volatility, 2)) + volatility * rnd.Gauss(0, expiry));
+        call_profit.push_back(std::exp(-risk_free_interest_rate * expiry) * std::max(expiry_price - strike_price, 0.));
+        put_profit.push_back(std::exp(-risk_free_interest_rate * expiry) * std::max(strike_price - expiry_price, 0.));
+    }
+
+    block_statistics(
+            std::begin(call_profit),
+            std::end(call_profit),
+            std::back_inserter(avg_call_option_price),
+            std::back_inserter(std_call_option_price),
+            block_size
+            );
+
+    block_statistics(
+            std::begin(put_profit),
+            std::end(put_profit),
+            std::back_inserter(avg_put_option_price),
+            std::back_inserter(std_put_option_price),
+            block_size
+            );
 
 	std::ofstream call_output_file("call-direct-price.dat"),
 	              put_output_file("put-direct-price.dat");
-	for(unsigned int i = 0; i < n_blocks; ++i)
+	for(unsigned int i = 0; i < avg_call_option_price.size(); ++i)
 	{
 		call_output_file << avg_call_option_price[i] << " " << std_call_option_price[i] << "\n";
 		put_output_file  << avg_put_option_price[i]  << " " << std_put_option_price[i]  << "\n";
@@ -125,51 +119,46 @@ int main(int argc, char *argv[])
 	//   to t_n = N;
 	// - the rest goes on as above.
 
-	call_estimates_sum = 0;
-	call_squared_estimates_sum = 0;
-	put_estimates_sum = 0;
-	put_squared_estimates_sum = 0;
-	
 	unsigned int n_steps(100); // Steps to sample the random path of the price.
 	double time_step(expiry / n_steps);
 
-	for(unsigned int i = 0; i < n_blocks; ++i)
+    call_profit.clear();
+    put_profit.clear();
+    avg_call_option_price.clear();
+    std_call_option_price.clear();
+    avg_put_option_price.clear();
+    std_put_option_price.clear();
+
+	for(unsigned int i = 0; i < n_data; ++i)
 	{
-		call_profit = 0;
-		put_profit  = 0;
-		for(unsigned int j = 0; j < block_size; ++j)
-		{
-			expiry_price = starting_asset_price;
-			// Sample the asset price at the expiry by sampling the process
-			// along its random path, with small increments.
-			for(unsigned int step = 0; step < n_steps; ++step)
-				expiry_price *= std::exp((risk_free_interest_rate - 0.5 * std::pow(volatility, 2)) * time_step + volatility * rnd.Gauss(0, 1) * std::sqrt(time_step));
-			call_profit += std::exp(-risk_free_interest_rate * expiry) * std::max(expiry_price - strike_price, 0.);
-			put_profit  += std::exp(-risk_free_interest_rate * expiry) * std::max(strike_price - expiry_price, 0.);
-		}
-		call_profit /= block_size;
-		call_estimates_sum += call_profit;
-		call_squared_estimates_sum += std::pow(call_profit, 2);
-		avg_call_option_price[i] = call_estimates_sum / (i + 1);
-		put_profit /= block_size;
-		put_estimates_sum += put_profit;
-		put_squared_estimates_sum += std::pow(put_profit, 2);
-		avg_put_option_price[i] = put_estimates_sum / (i + 1);
-		if(i > 0)
-		{
-			std_call_option_price[i] = std::sqrt((call_squared_estimates_sum / (i + 1) - std::pow(avg_call_option_price[i], 2)) / i);
-			std_put_option_price[i]  = std::sqrt((put_squared_estimates_sum / (i + 1) - std::pow(avg_put_option_price[i], 2)) / i);
-		}
-		else
-		{
-			std_call_option_price[i] = 0;
-			std_put_option_price[i]  = 0;
-		}
-	}
+        expiry_price = starting_asset_price;
+        // Sample the asset price at the expiry by sampling the process
+        // along its random path, with small increments.
+        for(unsigned int step = 0; step < n_steps; ++step)
+            expiry_price *= std::exp((risk_free_interest_rate - 0.5 * std::pow(volatility, 2)) * time_step + volatility * rnd.Gauss(0, 1) * std::sqrt(time_step));
+        call_profit.push_back(std::exp(-risk_free_interest_rate * expiry) * std::max(expiry_price - strike_price, 0.));
+        put_profit.push_back(std::exp(-risk_free_interest_rate * expiry) * std::max(strike_price - expiry_price, 0.));
+    }
+
+    block_statistics(
+            std::begin(call_profit),
+            std::end(call_profit),
+            std::back_inserter(avg_call_option_price),
+            std::back_inserter(std_call_option_price),
+            block_size
+            );
+
+    block_statistics(
+            std::begin(put_profit),
+            std::end(put_profit),
+            std::back_inserter(avg_put_option_price),
+            std::back_inserter(std_put_option_price),
+            block_size
+            );
 
 	call_output_file.open("call-progressive-price.dat"),
 	put_output_file.open("put-progressive-price.dat");
-	for(unsigned int i = 0; i < n_blocks; ++i)
+	for(unsigned int i = 0; i < avg_call_option_price.size(); ++i)
 	{
 		call_output_file << avg_call_option_price[i] << " " << std_call_option_price[i] << "\n";
 		put_output_file  << avg_put_option_price[i]  << " " << std_put_option_price[i]  << "\n";

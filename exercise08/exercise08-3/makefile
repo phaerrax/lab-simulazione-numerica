@@ -1,13 +1,16 @@
 CC = g++
-CFLAGS = -Wall -O3 --std=c++11
+SRCDIR = ../..
+INCLUDE = $(SRCDIR)/include
+CFLAGS = -Wall -O3 --std=c++11 -I$(INCLUDE)
+EXNAME = exercise08-3
 
 .PHONY: clean
-
-qmc1d: qmc1d.o random.o
-	$(CC) $^ -o $@
 
 %.o: %.cc
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(EXNAME): random.o qmc1d.o
+	$(CC) $^ -o $@
+
 clean:
-	rm *.o qmc1d seed.out
+	rm *.o $(EXNAME) seed.out

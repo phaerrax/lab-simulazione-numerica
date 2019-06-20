@@ -9,7 +9,12 @@
 #include "random.hh"
 #include "ising_1d_sim.hh"
 
-std::vector<std::vector<double>> block_statistics(const std::vector<double> &, unsigned int);
+/*
+   Here I will not use the usual block_statistics function
+   because I used a different method to calculate the average
+   and error values (I'm still using a blocking technique,
+   though).
+*/
 std::vector<double> block_average(const std::vector<double> &, unsigned int);
 std::vector<double> block_uncertainty(const std::vector<double> &);
 
@@ -357,38 +362,4 @@ std::vector<double> block_uncertainty(const std::vector<double> & x)
 	}
 
 	return uncertainties;
-}
-
-std::vector<std::vector<double>> block_statistics(const std::vector<double> & x, unsigned int n_blocks)
-{
-	unsigned int block_size = static_cast<unsigned int>(std::round(
-				static_cast<double>(x.size()) / n_blocks
-				));
-
-	// Just to make sure:
-	assert(block_size * n_blocks == x.size());
-
-	double sum(0), sum_sq(0), block_average;
-	std::vector<double> row(2);
-	std::vector<std::vector<double>> result;
-
-	// - sum the values in each block;
-	// - compute the average of that block;
-	// - from the list of averages compute the standard dev of the mean.
-	for(unsigned int i = 0; i < n_blocks; ++i)
-	{
-		block_average = 0;
-		for(unsigned int j = 0; j < block_size; ++j)
-			block_average += x[i * block_size + j];
-		block_average /= block_size;
-		sum           += block_average;
-		sum_sq        += std::pow(block_average, 2);
-		row[0]         = sum / (i + 1);
-		if(i > 0)
-			row[1] = std::sqrt((sum_sq / (i + 1) - std::pow(row[0], 2)) / i);
-		else
-			row[1] = 0;
-		result.push_back(row);
-	}
-	return result;
 }

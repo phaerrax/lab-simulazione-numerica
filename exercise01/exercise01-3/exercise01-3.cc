@@ -10,6 +10,7 @@
 #include <utility>
 #include <array>
 #include "random.hh"
+#include "statistics.hh"
 
 typedef std::complex<double> point;
 
@@ -53,12 +54,13 @@ int main(int argc, char *argv[])
 
     const double L = 0.5; // The length of the stick.
 
-    const unsigned int n_tries(100), n_throws(10000);
-    std::vector<double> pi_estimate(n_tries),     // Average within a block.
-                        pi_estimate_avg(n_tries), // Overall average.
-                        pi_estimate_std(n_tries); // Overall std.
+    const unsigned int n_tries(1e5),
+                       n_throws(1e2),
+                       block_size(1e2);
+    std::vector<double> pi_estimate,     // Average within a block.
+                        pi_estimate_avg, // Overall average.
+                        pi_estimate_std; // Overall std.
     unsigned int hits;
-    double sum_averages(0), sum_squared_averages(0);
     std::pair<point, point> p;
 
     // Make M throws and for each step compute the average and the
@@ -77,22 +79,17 @@ int main(int argc, char *argv[])
             if(std::floor(std::real(p.first)) != std::floor(std::real(p.second)))
                 ++hits;
         }
-        pi_estimate[i] = 2 * L * n_throws / hits; // (d = 1.)
+        pi_estimate.push_back(2 * L * n_throws / hits); // (d = 1.)
         // Maybe we can write here a check in case hits turns out to be zero...
-
-        // At each step i, we compute the sum of the average values (i.e. the
-        // estimates of pi) and of their squares. We will need these to
-        // calculate the standard deviation at each step.
-        sum_averages += pi_estimate[i];
-        sum_squared_averages += std::pow(pi_estimate[i], 2);
-
-        pi_estimate_avg[i] = sum_averages / (i + 1);
-        // (i runs from 0 to n_blocks - 1.)
-        if(i > 0)
-            pi_estimate_std[i] = std::sqrt((sum_squared_averages / (i + 1) - std::pow(pi_estimate_avg[i], 2)) / i);
-        else
-            pi_estimate_std[i] = 0;
     }
+
+    block_statistics(
+            std::begin(pi_estimate),
+            std::end(pi_estimate),
+            std::back_inserter(pi_estimate_avg),
+            std::back_inserter(pi_estimate_std),
+            block_size
+            );
 
     std::ofstream output_file("pi_estimate.dat");
     const unsigned int col_width = 12;
@@ -103,7 +100,7 @@ int main(int argc, char *argv[])
     output_file.precision(4);
     output_file << std::scientific;
 
-    for(unsigned int i = 0; i < n_tries; ++i)
+    for(unsigned int i = 0; i < pi_estimate_avg.size(); ++i)
         output_file << std::setw(col_width) << pi_estimate_avg[i] << std::setw(col_width) << pi_estimate_std[i] << std::endl;
 
     output_file.close();
