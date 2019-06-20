@@ -15,7 +15,7 @@
 #include "random.hh"
 
 const unsigned int n_points(30),
-				   conf_elements(900);
+		   conf_elements(900);
 
 // Define basic data structures, and the operations on them.
 using point = std::array<double, 2>;
@@ -512,4 +512,3 @@ std::string print(const chromosome & c)
 	s += std::to_string(c.back());
 	return s;
 }
-		

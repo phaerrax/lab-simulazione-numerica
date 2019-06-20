@@ -8,8 +8,7 @@
 #include <vector>
 #include "random.hh"
 #include "molecular_dynamics_sim.hh"
-
-std::vector<std::vector<double>> block_statistics(const std::vector<double> &, unsigned int);
+#include "statistics.hh"
 
 int main(int argc, char *argv[])
 { 
@@ -173,7 +172,7 @@ int main(int argc, char *argv[])
                   pressure_output(prefix + "output.pressure.0");
 
     unsigned int n_conf(1),
-                 n_blocks(100),
+                 block_size(n_steps / 100),
                  measure_step(10), // Physical measurements will be executed
                                    // every measure_step steps.
 	             n_bins_rd(100); // of the radial dist function.
@@ -234,11 +233,56 @@ int main(int argc, char *argv[])
 
     // Calculate average values and standard deviation of the measured
     // physical quantities.
-    std::vector<std::vector<double>> potential_en_density_blocks(block_statistics(potential_en_density, n_blocks)),
-                                     kinetic_en_density_blocks(block_statistics(kinetic_en_density, n_blocks)),
-                                     total_en_density_blocks(block_statistics(total_en_density, n_blocks)),
-                                     temperature_blocks(block_statistics(temperature, n_blocks)),
-                                     pressure_blocks(block_statistics(pressure, n_blocks));
+    std::vector<double> potential_en_density_avg,
+                        potential_en_density_std,
+                        kinetic_en_density_avg,
+                        kinetic_en_density_std,
+                        total_en_density_avg,
+                        total_en_density_std,
+                        temperature_avg,
+                        temperature_std,
+                        pressure_avg,
+                        pressure_std;
+
+    block_statistics(
+            std::begin(potential_en_density),
+            std::end(potential_en_density),
+            std::back_inserter(potential_en_density_avg),
+            std::back_inserter(potential_en_density_std),
+            block_size
+            );
+
+    block_statistics(
+            std::begin(kinetic_en_density),
+            std::end(kinetic_en_density),
+            std::back_inserter(kinetic_en_density_avg),
+            std::back_inserter(kinetic_en_density_std),
+            block_size
+            );
+
+    block_statistics(
+            std::begin(total_en_density),
+            std::end(total_en_density),
+            std::back_inserter(total_en_density_avg),
+            std::back_inserter(total_en_density_std),
+            block_size
+            );
+
+    block_statistics(
+            std::begin(temperature),
+            std::end(temperature),
+            std::back_inserter(temperature_avg),
+            std::back_inserter(temperature_std),
+            block_size
+            );
+
+    block_statistics(
+            std::begin(pressure),
+            std::end(pressure),
+            std::back_inserter(pressure_avg),
+            std::back_inserter(pressure_std),
+            block_size
+            );
 
 	pot_en_output      << "steps pot_en_avg pot_en_std\n";
 	kin_en_output      << "steps kin_en_avg kin_en_std\n";
@@ -246,24 +290,24 @@ int main(int argc, char *argv[])
 	temperature_output << "steps temperature_avg temperature_std\n";
 	pressure_output    << "steps pressure_avg pressure_std\n";
 	unsigned int steps;
-    for(unsigned int j = 0; j < potential_en_density_blocks.size(); ++j)
+    for(unsigned int j = 0; j < potential_en_density_avg.size(); ++j)
     {
-        steps = (j + 1) * (n_steps / n_blocks);
-		pot_en_output      << steps                             << " "
-						   << potential_en_density_blocks[j][0] << " "
-					       << potential_en_density_blocks[j][1] << "\n";
-        kin_en_output      << steps                             << " "
-			               << kinetic_en_density_blocks[j][0]   << " "
-                           << kinetic_en_density_blocks[j][1]   << "\n";
-        tot_en_output      << steps                             << " "
-			               << total_en_density_blocks[j][0]     << " "
-                           << total_en_density_blocks[j][1]     << "\n";
-        temperature_output << steps                             << " "
-			               << temperature_blocks[j][0]          << " "
-                           << temperature_blocks[j][1]          << "\n";
-        pressure_output    << steps                             << " "
-			               << pressure_blocks[j][0]             << " "
-                           << pressure_blocks[j][1]             << "\n";
+        steps = (j + 1) * block_size;
+		pot_en_output      << steps                       << " "
+						   << potential_en_density_avg[j] << " "
+					       << potential_en_density_std[j] << "\n";
+        kin_en_output      << steps                       << " "
+			               << kinetic_en_density_avg[j]   << " "
+                           << kinetic_en_density_std[j]   << "\n";
+        tot_en_output      << steps                       << " "
+			               << total_en_density_avg[j]     << " "
+                           << total_en_density_std[j]     << "\n";
+        temperature_output << steps                       << " "
+			               << temperature_avg[j]          << " "
+                           << temperature_std[j]          << "\n";
+        pressure_output    << steps                       << " "
+			               << pressure_avg[j]             << " "
+                           << pressure_std[j]             << "\n";
     }
     pot_en_output.close();
     kin_en_output.close();
@@ -298,16 +342,20 @@ int main(int argc, char *argv[])
 
 	for(unsigned int i = 0; i < tr_radial_distribution.size(); ++i)
 	{
-		auto v = block_statistics(tr_radial_distribution[i], 100);
-		// For each bin of the histogram, we get a vector of pairs
-		// (average, stdev). I am only interested in the averages
-		// and in the final stdev.
-		for(const auto & pair : v)
-			rd_averages[i].push_back(pair.front());
-			// rd_averages[i] will be a n_blocks-long vector; its elements
-			// are the block averages of the i-th bin.
-			// rd_averages itself has n_bins elements.
-		rd_final_stdev[i] = v.back().back();
+        std::vector<double> err;
+		block_statistics(
+                std::begin(tr_radial_distribution[i]),
+                std::end(tr_radial_distribution[i]),
+                std::back_inserter(rd_averages[i]),
+                std::back_inserter(err),
+                tr_radial_distribution[i].size() / 100
+                );
+		// I am only interested in the averages and in the final stdev.
+
+        // rd_averages[i] will be a n_blocks-long vector; its elements
+        // are the block averages of the i-th bin.
+        // rd_averages itself has n_bins elements.
+		rd_final_stdev[i] = err.back();
 	}
 
 	// Output the block averages of the radial distribution function.
@@ -342,39 +390,4 @@ int main(int argc, char *argv[])
 	final_rd_output.close();
 
     return 0;
-}
-
-std::vector<std::vector<double>> block_statistics(const std::vector<double> & x, unsigned int n_blocks)
-{
-    unsigned int block_size = static_cast<unsigned int>(std::round(
-            static_cast<double>(x.size()) / n_blocks
-            ));
-
-    // Just to make sure:
-    assert(block_size * n_blocks == x.size());
-
-    double sum(0), sum_sq(0), block_average;
-    std::vector<double> row(2);
-    std::vector<std::vector<double>> result;
-
-    // - sum the values in each block;
-    // - compute the average of that block;
-    // - from the list of averages compute the standard dev of the mean.
-    for(unsigned int i = 0; i < n_blocks; ++i)
-    {
-        block_average = 0;
-        for(unsigned int j = 0; j < block_size; ++j)
-            block_average += x[i * block_size + j];
-        block_average /= block_size;
-        sum           += block_average;
-        sum_sq        += std::pow(block_average, 2);
-        row[0] = sum / (i + 1);
-        if(i > 0)
-            row[1] = std::sqrt((sum_sq / (i + 1) - std::pow(row[0], 2)) / i);
-        else
-            row[1] = 0;
-        ++i;
-        result.push_back(row);
-    }
-    return result;
 }

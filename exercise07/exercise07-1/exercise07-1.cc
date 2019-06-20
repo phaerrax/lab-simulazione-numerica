@@ -9,6 +9,11 @@
 #include "random.hh"
 #include "metropolis_NVT.hh"
 
+/*
+   This exercise requires that the uncertainties be calculated
+   directly in the python script, therefore I will not use the
+   block_statistics function here.
+*/
 int main(int argc, char *argv[])
 { 
     // Random number generator initialization
