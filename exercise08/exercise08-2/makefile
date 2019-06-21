@@ -9,10 +9,10 @@ EXNAME = exercise08-2
 %.o: %.cc
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(EXNAME): $(EXNAME).o random.o $(INCLUDE)/statistics.hh
+$(EXNAME): $(EXNAME).o $(INCLUDE)/random.o $(INCLUDE)/statistics.hh
 	$(CC) $^ -o $@
 
-$(EXNAME)-grid: $(EXNAME)-grid.o random.o $(INCLUDE)/statistics.hh
+$(EXNAME)-grid: $(EXNAME)-grid.o $(INCLUDE)/random.o $(INCLUDE)/statistics.hh
 	$(CC) $^ -o $@
 
 clean:

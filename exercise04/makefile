@@ -9,7 +9,7 @@ EXNAME = exercise04
 %.o: %.cc
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(EXNAME): $(EXNAME).o random.o molecular_dynamics_sim.o $(INCLUDE)/statistics.hh
+$(EXNAME): $(EXNAME).o $(INCLUDE)/random.o molecular_dynamics_sim.o $(INCLUDE)/statistics.hh
 	$(CC) $^ -o $@
 
 clean:

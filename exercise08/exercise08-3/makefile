@@ -9,7 +9,7 @@ EXNAME = exercise08-3
 %.o: %.cc
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(EXNAME): random.o qmc1d.o
+$(EXNAME): $(INCLUDE)/random.o qmc1d.o
 	$(CC) $^ -o $@
 
 clean:

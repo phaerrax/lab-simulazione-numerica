@@ -9,10 +9,10 @@ EXNAME = exercise07-1
 %.o: %.cc
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(EXNAME): $(EXNAME).o random.o metropolis_NVT.o
+$(EXNAME): $(EXNAME).o $(INCLUDE)/random.o metropolis_NVT.o
 	$(CC) $^ -o $@
 
-warmup_analysis: warmup_analysis.o metropolis_NVT.o random.o
+warmup_analysis: warmup_analysis.o metropolis_NVT.o $(INCLUDE)/random.o
 	$(CC) $^ -o $@
 
 %.o: %.cc
