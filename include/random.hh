@@ -19,8 +19,8 @@ class Random
         double Rannyu(void);
         double Rannyu(double min, double max);
         double Gauss(double mean, double sigma);
-        double exponential(double rate);
-        double cauchylorentz(double median, double scale);
+        double exponential(double rate); // rate must be > 0
+        double cauchylorentz(double median, double scale); // scale must be > 0
 
     private:
         int m1, m2, m3, m4,

@@ -11,7 +11,7 @@ _/    _/  _/_/_/  _/_/_/_/ email: Davide.Galli@unimi.it
 #include <iostream>
 #include <fstream>
 #include <cmath>
-#include <cassert>
+#include <stdexcept>
 #include "random.hh"
 
 void Random::SaveSeed()
@@ -44,8 +44,9 @@ double Random::exponential(double rate)
     // Exponential distribution
     // ------------------------
     // If x follows a U([0,1)) distribution, then -1/a*log(1-x) follows an
-    // exponential distribution with rate a.
-    assert("Rate parameter of the exponential function must be positive." && rate > 0);
+    // exponential distribution with rate a (that must be positive).
+    if(rate <= 0)
+        throw std::invalid_argument("Rate parameter of the exponential distribution must be positive.");
     return -1. / rate * std::log(1. - Rannyu());
 }
 
@@ -54,10 +55,11 @@ double Random::cauchylorentz(double median, double scale)
     // Cauchy-Lorentz distribution
     // ---------------------------
     // If x follows a U([0,1)) distribution, then y*tan(pi*(x-1/2)) follows
-    // a Cauchy-Lorentz distribution with scale y and median 0.
+    // a Cauchy-Lorentz distribution with scale y (always > 0) and median 0.
     // A translation y |-> y-a then produces a distribution with a as the
     // median value.
-    assert("Scale parameter of the Cauchy-Lorentz distribution must be positive." && scale > 0);
+    if(scale <= 0)
+        throw std::invalid_argument("Scale parameter of the Cauchy-Lorentz distribution must be positive.");
     return median + scale * std::tan(M_PI * (Rannyu() - 0.5));
 }
 
