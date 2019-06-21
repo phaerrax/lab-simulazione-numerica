@@ -12,6 +12,7 @@ _/    _/  _/_/_/  _/_/_/_/ email: Davide.Galli@unimi.it
 #include <fstream>
 #include <cmath>
 #include <cstdlib>
+#include <cassert>
 #include "random.hh"
 
 using namespace std;
@@ -39,6 +40,28 @@ double Random :: Gauss(double mean, double sigma) {
 
 double Random :: Rannyu(double min, double max){
    return min+(max-min)*Rannyu();
+}
+
+double Random::exponential(double rate)
+{
+    // Exponential distribution
+    // ------------------------
+    // If x follows a U([0,1)) distribution, then -1/a*log(1-x) follows an
+    // exponential distribution with rate a.
+    assert("Rate parameter of the exponential function must be positive." && rate > 0);
+    return -1. / rate * std::log(1. - Rannyu());
+}
+
+double Random::cauchylorentz(double median, double scale)
+{
+    // Cauchy-Lorentz distribution
+    // ---------------------------
+    // If x follows a U([0,1)) distribution, then y*tan(pi*(x-1/2)) follows
+    // a Cauchy-Lorentz distribution with scale y and median 0.
+    // A translation y |-> y-a then produces a distribution with a as the
+    // median value.
+    assert("Scale parameter of the Cauchy-Lorentz distribution must be positive." && scale > 0);
+    return median + scale * std::tan(M_PI * (Rannyu() - 0.5));
 }
 
 double Random :: Rannyu(void){
