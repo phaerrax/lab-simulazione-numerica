@@ -343,7 +343,7 @@ double molecular_dynamics_sim::force(unsigned int this_particle, unsigned int di
     return f;
 }
 
-double molecular_dynamics_sim::get_temperature()
+double molecular_dynamics_sim::get_temperature() const
 {
     if(!ms_velocity_already_computed)
     {
@@ -380,7 +380,7 @@ double molecular_dynamics_sim::get_potential_energy_density() const
     return potential_en / n_particles;
 }
 
-double molecular_dynamics_sim::get_kinetic_energy_density()
+double molecular_dynamics_sim::get_kinetic_energy_density() const
 {
     if(!ms_velocity_already_computed)
     {
@@ -393,7 +393,7 @@ double molecular_dynamics_sim::get_kinetic_energy_density()
     return ms_velocity / (2 * n_particles);
 }
 
-double molecular_dynamics_sim::get_pressure()
+double molecular_dynamics_sim::get_pressure() const
 {
     // We can save some time if the temperature has already been calculated.
     if(!ms_velocity_already_computed)

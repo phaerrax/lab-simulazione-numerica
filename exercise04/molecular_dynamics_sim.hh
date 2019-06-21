@@ -62,10 +62,10 @@ class molecular_dynamics_sim
 
         // Extract thermodynamical quantities
         // ==================================
-        double get_temperature();
+        double get_temperature() const;
         double get_potential_energy_density() const;
-        double get_kinetic_energy_density();
-        double get_pressure();
+        double get_kinetic_energy_density() const;
+        double get_pressure() const;
         // The temperature, pressure and kinetic energy methods, if possible,
         // use the same calculation of the mean square velocity, to save
         // some time.
@@ -101,16 +101,16 @@ class molecular_dynamics_sim
         // Internal / initial parameters
         unsigned int n_particles; // Total number of particles in the system.
         double temperature,
-               ms_velocity,
                total_volume,
                particle_density,
                cell_edge_length,
                integration_step,
                distance_cutoff;
+        mutable double ms_velocity;
 
         // Flags
         // =====
-        bool ms_velocity_already_computed;
+        mutable bool ms_velocity_already_computed;
 };
 
 #endif
