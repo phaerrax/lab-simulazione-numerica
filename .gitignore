@@ -6,6 +6,7 @@
 !*.tcc
 !*.hh
 !*.ipynb
+!*.dat
 !makefile
 !README
 !LICENCE
