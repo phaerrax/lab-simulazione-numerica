@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
         root_avg_squared_distance[step] = std::sqrt(sum / n_walks);
     }
 
-    std::ofstream output_file("cubic-random-walk.dat");
+    std::ofstream output_file("cubic_random_walk.dat");
     std::ostream_iterator<double> out(output_file, "\n");
     std::copy(root_avg_squared_distance.begin(), root_avg_squared_distance.end(), out);
 
@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
         root_avg_squared_distance[step] = std::sqrt(sum / n_walks);
     }
 
-    output_file.open("continuous-random-walk.dat");
+    output_file.open("continuous_random_walk.dat");
     std::copy(root_avg_squared_distance.begin(), root_avg_squared_distance.end(), out);
 
     rnd.SaveSeed();
