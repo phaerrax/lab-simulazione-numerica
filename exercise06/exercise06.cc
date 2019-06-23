@@ -155,13 +155,25 @@ int main()
 		m.reserve(temperatures.size());
 
 	// Define the vectors that will hold the measured values, step by step.
-	std::vector<double> energy,      // At zero external field
-		                sq_energy,   // At zero external field
-		                spin_sum,    // At non-zero external field
-		                sq_spin_sum; // At zero external field
+	std::vector<double> energy,
+						// At zero external field, needed for the internal
+						// energy and the specific heat.
+		                sq_energy,
+						// At zero external field, needed for the
+						// specific heat.
+		                spin_sum,
+						// At non-zero external field, needed for the
+						// magnetisation.
+		                spin_sum_zero,
+						// At zero external field, needed for the
+						// magnetic susceptibility.
+		                sq_spin_sum;
+						// At zero external field, needed for the
+						// magnetic susceptility (will hold the square
+						// of the values in spin_sum_zero).
 
-	// These vectors will hold the progressive values of the physical
-	// quantities progressively averaged during the evolution of the
+	// These vectors will hold the progressive of the physical
+	// quantities, progressively averaged during the evolution of the
 	// system, in order to perform data blocking.
 	std::vector<double> avg_energy,
 						avg_sq_energy,	
@@ -185,10 +197,12 @@ int main()
 		energy.clear();
 		sq_energy.clear();
 		spin_sum.clear();
+		spin_sum_zero.clear();
 		sq_spin_sum.clear();
 		energy.reserve(n_steps);
 		sq_energy.reserve(n_steps);
 		spin_sum.reserve(n_steps);
+		spin_sum_zero.reserve(n_steps);
 		sq_spin_sum.reserve(n_steps);
 
 	    for(auto & m : avg_current_measurements)
@@ -220,7 +234,7 @@ int main()
 		{
 			energy.push_back(sim_zero.get_energy());
 			spin_sum.push_back(sim.get_spin_sum());
-			sq_spin_sum.push_back(sim_zero.get_spin_sum());
+			spin_sum_zero.push_back(sim_zero.get_spin_sum());
 
 			sim.next_gibbs(rng);
 			sim_zero.next_gibbs(rng);
@@ -235,9 +249,12 @@ int main()
 				);
 
 		std::transform(
-				std::begin(spin_sum),
-				std::end(spin_sum),
+				std::begin(spin_sum_zero),
+				std::end(spin_sum_zero),
 				std::back_inserter(sq_spin_sum),
+				// The square of the sum of all spins is needed only
+				// in the h = 0 case, so I will not indicate it
+				// in the variable name anymore.
 				[](double x){return x * x;}
 				);
 
