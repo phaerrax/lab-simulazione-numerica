@@ -48,7 +48,10 @@ int main(int argc, char *argv[])
     // phase from the command-line arguments.
     if(argc != 3)
     {
-        std::cerr << "Error: too few arguments." << std::endl;
+        std::cerr << "Error: invalid input.\n\n"
+				  << "Syntax: " << argv[0] << " <element> <phase>\n"
+				  << "(for example: " << argv[0] << " krypton liquid)"
+				  << std::endl;
         return 1;
     }
 
@@ -68,7 +71,7 @@ int main(int argc, char *argv[])
     // Read the input parameters from a file.
     // They have to be given in a very specific way...
     std::string input_parameters_file(prefix + "input.dat");
-    std::cout << "Read input parameters from " << input_parameters_file << "." << std::endl;
+    std::cout << "Reading input parameters from " << input_parameters_file << "..." << std::endl;
     std::ifstream input_parameters(input_parameters_file);
 
     double input_temperature,
@@ -77,17 +80,29 @@ int main(int argc, char *argv[])
            distance_cutoff,
            time_step;
     unsigned int n_steps,
-                 print_steps;
+                 snapshots_steps,
+                 measurements_steps,
+                 block_size;
 
-    input_parameters >> input_temperature
-                     >> n_particles
-                     >> particle_density
-                     >> distance_cutoff
-                     >> time_step
-                     >> n_steps
-                     >> print_steps;
-
+	if(input_parameters.is_open())
+	{
+		input_parameters >> input_temperature
+						 >> n_particles
+						 >> particle_density
+						 >> distance_cutoff
+						 >> time_step
+						 >> n_steps
+						 >> snapshots_steps
+						 >> measurements_steps
+						 >> block_size;
+	}
+	else
+	{
+		std::cerr << "Error: unable to open " << input_parameters_file << "." << std::endl;
+		return 2;
+	}
     input_parameters.close();
+    std::cout << "Input complete." << std::endl;
 
     // We assume that the system is confined in a cubic cell, which volume
     // is determined by the number of particles and their density.
@@ -161,17 +176,14 @@ int main(int argc, char *argv[])
     // Now everything is in place for the algorithm to start the integration.
     // An intermediate snapshot of the system (a list of the position of the
     // particles and some thermodynamical quantities) is printed every
-    // 'print_steps' only, to save some time and memory.
+    // 'snapshots_steps' only, to save some time and memory.
     std::ofstream potential_en_output(prefix + "output_potential_en.dat"),
                   kinetic_en_output(prefix + "output_kinetic_en.dat"),
                   total_en_output(prefix + "output_total_en.dat"),
                   temperature_output(prefix + "output_temperature.dat"),
                   pressure_output(prefix + "output_pressure.dat");
 
-    unsigned int n_conf(1),
-                 block_size(n_steps / 100),
-                 measure_step(10); // Physical measurements will be executed
-                                   // every measure_step steps.
+    unsigned int n_conf(1);
 
     dynamo.write_config_xyz("frames/config_0.xyz");
 
@@ -183,7 +195,7 @@ int main(int argc, char *argv[])
     for(unsigned int step = 1; step <= n_steps; ++step)
     {
         dynamo.move();
-        if(step % measure_step == 0)
+        if(step % measurements_steps == 0)
         {
             progress = 100 * static_cast<double>(step) / n_steps;
             std::cerr << "\rNumber of time-steps: " << step << " / " << n_steps << " (" << std::round(progress) << "%)";
@@ -193,13 +205,16 @@ int main(int argc, char *argv[])
             // The list of config_N.xyz files will be read by an external
             // program, i.e. ovito, which will be able then to visualise
             // the evolution of the system.
-            dynamo.write_config_xyz("frames/config_" + std::to_string(n_conf) + ".xyz");
-            ++n_conf;
             potential_en_density.push_back(dynamo.get_potential_energy_density());
             kinetic_en_density.push_back(dynamo.get_kinetic_energy_density());
             temperature.push_back(dynamo.get_temperature());
             pressure.push_back(dynamo.get_pressure());
         }
+		if(step % snapshots_steps == 0)
+		{
+            dynamo.write_config_xyz("frames/config_" + std::to_string(n_conf) + ".xyz");
+            ++n_conf;
+		}
     }
     std::cerr << std::endl;
 
@@ -287,5 +302,6 @@ int main(int argc, char *argv[])
     temperature_output.close();
     pressure_output.close();
 
+	rng.SaveSeed();
     return 0;
 }

@@ -1,0 +1,21 @@
+0.8
+108
+1.1
+2.2
+0.0005
+100000
+100
+10
+100
+
+---------------------------------------------------
+Input format:
+ - input temperature
+ - number of particles
+ - particle density
+ - distance cutoff
+ - integration time step
+ - total number of steps
+ - number of steps to print a snapshot of the system
+ - number of steps to measure phyhsical quantities
+ - statistical block size
