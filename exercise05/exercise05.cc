@@ -46,9 +46,8 @@ int main()
         std::cerr << "Unable to open seed.in." << std::endl;
 
     const unsigned int dim = 3;
-    double L(1.2);
-    metropolis_uniform<dim> metro1s(-L, L);
-    metropolis_uniform<dim> metro2p(-L, L);
+    metropolis_uniform<dim> metro1s(-1.22, 1.22);
+    metropolis_uniform<dim> metro2p(-2.9, 2.9);
     
     std::array<double, dim> start = {1, 0, 0};
     metro1s.set_starting_point(start);
@@ -71,7 +70,7 @@ int main()
     };
     // The functions to be sampled.
 
-    unsigned int n_steps(1e6);
+    unsigned int n_steps(1e5);
     std::vector<std::array<double, dim>> sequence1s, sequence2p;
     std::array<double, dim> new_point;
     std::vector<double> r1s, r2p;
@@ -125,12 +124,12 @@ int main()
     output_file.open("1s_radius_avg_uniform.dat");
     block_statistics(
             std::begin(r1s),
-            std::begin(r1s),
+            std::end(r1s),
             std::back_inserter(r1s_avg),
             std::back_inserter(r1s_std),
             r1s.size() / 100
             );
-    for(unsigned int i = 0; i < r1s.size(); ++i)
+    for(unsigned int i = 0; i < r1s_avg.size(); ++i)
         output_file << std::setw(col_width) << r1s_avg[i]
                     << std::setw(col_width) << r1s_std[i]
                     << "\n";
@@ -140,17 +139,18 @@ int main()
     output_file.open("2p_radius_avg_uniform.dat");
     block_statistics(
             std::begin(r2p),
-            std::begin(r2p),
+            std::end(r2p),
             std::back_inserter(r2p_avg),
             std::back_inserter(r2p_std),
             r2p.size() / 100
             );
-    for(unsigned int i = 0; i < r2p.size(); ++i)
+    for(unsigned int i = 0; i < r2p_avg.size(); ++i)
         output_file << std::setw(col_width) << r2p_avg[i]
                     << std::setw(col_width) << r2p_std[i]
                     << "\n";
     output_file << std::endl;
     output_file.close();
 
+	rng.SaveSeed();
     return 0;
 }
