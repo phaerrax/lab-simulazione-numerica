@@ -10,13 +10,17 @@
 #include "ising_1d_sim.hh"
 
 /*
-   Here I will not use the usual block_statistics function
-   because I used a different method to calculate the average
-   and error values (I'm still using a blocking technique,
-   though).
+   These two functions are the "unpackaged" versions of the usual
+   block_statistics function I used in other exercises. Since in
+   the program there will be some quantities for which the
+   average value and the uncertainty cannot be calculated
+   simultaneously (at least, not without distorting the
+   block_statistics function), I need the separate functions.
 */
-std::vector<double> block_average(const std::vector<double> &, unsigned int);
-std::vector<double> block_uncertainty(const std::vector<double> &);
+template <class ForwardIterator, class OutputIterator>
+void block_average(ForwardIterator, ForwardIterator, OutputIterator, unsigned int);
+template <class ForwardIterator, class OutputIterator>
+void block_uncertainty(ForwardIterator, ForwardIterator, OutputIterator);
 
 int main()
 {
@@ -67,15 +71,15 @@ int main()
 		   ext_magnetic_field;
 	unsigned int n_spins,
 				 metro,
-				 n_blocks,
+				 block_size,
 				 n_steps;
 
 	input_parameters >> equilibration_steps
 	                 >> n_spins
 	                 >> interaction_energy
 	                 >> ext_magnetic_field
-	                 >> metro // if=1 Metropolis else Gibbs
-	                 >> n_blocks
+	                 >> metro // if == 1 Metropolis else Gibbs
+	                 >> block_size
 	                 >> n_steps;
 
 	input_parameters.close();
@@ -85,39 +89,42 @@ int main()
 	          << "Exchange interaction: " << interaction_energy  << "\n"
 	          << "External field: "       << ext_magnetic_field  << "\n";
 
-	if(metro==1)
+	if(metro == 1)
 		std::cout << "The program perform Metropolis moves." << "\n";
 	else
-		std::cout << "The program perform Gibbs moves." << "\n";
-	std::cout << "Number of blocks: "           << n_blocks << "\n"
-	          << "Number of steps in a block: " << n_steps  << std::endl;
+		std::cout << "The program perform Gibbs moves."       << "\n";
 
-	// Once the system has reached equilibrium, we can start taking averages.
-	// At each new step, the system evolves to a new state, according to the
-	// Metropolis or the Gibbs algorithm.
-	// The physical quantities of interest are
-	// - internal energy,
-	// - specific heat,
-	// - magnetic susceptibility,
-	// - magnetisation;
-	// in order to calculate them we will need the average value of the
-	// Hamiltonian, of its square, and the square of the average of the sum
-	// of all spins, at zero external magnetic field, and the average of
-	// the sum of all spins at a positive magnetic field.
-	// Therefore, at each step, we need to know the Hamiltonian and the
-	// sum of all spins for both zero and positive magnetic field.
-	//
-	// Since the Hamiltonian depends on the external magnetic field, we have
-	// to consider two different system at a time, one with the field set to
-	// zero and the other to the desired positive value (but initialised in
-	// the same way), since the evolution in the space of configuration is
-	// different whether the field is zero or not. 
-	//
-	// The uncertainties for these four quantities will be estimated using a
-	// blocking technique: each time a new step is reached, the quantity is
-	// calculated again; eventually we will have, for each quantity, a list
-	// of values, from which we can extract the average and the standard
-	// deviation.
+	std::cout << "Block size: "      << block_size << "\n"
+	          << "Number of steps: " << n_steps    << std::endl;
+
+	/*
+	   Once the system has reached equilibrium, we can start taking averages.
+	   At each new step, the system evolves to a new state, according to the
+	   Metropolis or the Gibbs algorithm.
+	   The physical quantities of interest are
+	   - internal energy,
+	   - specific heat,
+	   - magnetic susceptibility,
+	   - magnetisation;
+	   in order to calculate them we will need the average value of the
+	   Hamiltonian, of its square, and the square of the average of the sum
+	   of all spins, at zero external magnetic field, and the average of
+	   the sum of all spins at a positive magnetic field.
+	   Therefore, at each step, we need to know the Hamiltonian and the
+	   sum of all spins for both zero and positive magnetic field.
+
+	   Since the Hamiltonian depends on the external magnetic field, we have
+	   to consider two different system at a time, one with the field set to
+	   zero and the other to the desired positive value (but initialised in
+	   the same way), since the evolution in the space of configuration is
+	   different whether the field is zero or not.
+
+	   The uncertainties for these four quantities will be estimated using a
+	   blocking technique: each time a new step is reached, the quantity is
+	   calculated again; eventually we will have, for each quantity, a list
+	   of values, from which we can extract the average and the standard
+	   deviation.
+	*/
 
 	// Define the values of the temperature that will be used to compute the
 	// various physical quantities.
@@ -127,13 +134,15 @@ int main()
 	for(unsigned int i = 0; i < temperatures.size(); ++i)
 		temperatures[i] = min_temperature + (max_temperature - min_temperature) / temperatures.size() * i;
 
-	// Define the vectors that will hold the measured values, for each value
-	// of the temperature.
-	// Each sub-vector represents a different quantity:
-	// [0] internal energy;
-	// [1] specific heat;
-	// [2] magnetic susceptibility;
-	// [3] magnetisation.
+	/*
+	   Define the vectors that will hold the measured values, for each value
+	   of the temperature.
+	   Each sub-vector represents a different quantity:
+	   [0] internal energy;
+	   [1] specific heat;
+	   [2] magnetic susceptibility;
+	   [3] magnetisation.
+	*/
 	std::vector<std::vector<std::pair<double, double>>> measurements(4);
 	std::vector<std::string> measurement_names = {
 		"internal_energy",
@@ -159,12 +168,14 @@ int main()
 						avg_spin_sum,
 						avg_sq_spin_sum;
 
-	// Each time a run of the simulation is complete, from the vectors
-	// defined just above we calculate the progressive (as a new block
-	// of data is averaged) quantites such as the internal energy, the
-	// specific heat, and so on.
-	// These progressive quantities will be stored, with the respective
-	// standard deviation, in the following vectors.
+	/*
+	   Each time a run of the simulation is complete, from the vectors
+	   defined just above we calculate the progressive (as a new block
+	   of data is averaged) quantites such as the internal energy, the
+	   specific heat, and so on.
+	   These progressive quantities will be stored, with the respective
+	   standard deviation, in the following vectors.
+	*/
 	std::vector<std::vector<double>> avg_current_measurements(measurements.size()),
 						             std_current_measurements(measurements.size());
 
@@ -181,15 +192,9 @@ int main()
 		sq_spin_sum.reserve(n_steps);
 
 	    for(auto & m : avg_current_measurements)
-		{
 			m.clear();
-			m.resize(n_blocks);
-		}
 		for(auto & m : std_current_measurements)
-		{
 			m.clear();
-			m.resize(n_blocks);
-		}
 
 		// Generate an initial configuration.
 		ising_1d_sim sim(n_spins, rng);
@@ -223,25 +228,45 @@ int main()
 
 		// Calculate the square of the Hamiltonian and the sum of spins.
 		std::transform(
-				energy.begin(),
-				energy.end(),
+				std::begin(energy),
+				std::end(energy),
 				std::back_inserter(sq_energy),
 				[](double x){return x * x;}
 				);
 
 		std::transform(
-				spin_sum.begin(),
-				spin_sum.end(),
+				std::begin(spin_sum),
+				std::end(spin_sum),
 				std::back_inserter(sq_spin_sum),
 				[](double x){return x * x;}
 				);
 
 		// Calculate average values of the Hamiltonian and the sum of spins
 		// using data blocking... 
-		avg_energy      = block_average(energy, n_blocks);
-		avg_sq_energy   = block_average(sq_energy, n_blocks);
-		avg_spin_sum    = block_average(spin_sum, n_blocks);
-		avg_sq_spin_sum = block_average(sq_spin_sum, n_blocks);
+		block_average(
+				std::begin(energy),
+				std::end(energy),
+				std::back_inserter(avg_energy),
+				block_size
+				);
+		block_average(
+				std::begin(sq_energy),
+				std::end(sq_energy),
+				std::back_inserter(avg_sq_energy),
+				block_size
+				);
+		block_average(
+				std::begin(spin_sum),
+				std::end(spin_sum),
+				std::back_inserter(avg_spin_sum),
+				block_size
+				);
+		block_average(
+				std::begin(sq_spin_sum),
+				std::end(sq_spin_sum),
+				std::back_inserter(avg_sq_spin_sum),
+				block_size
+				);
 
 		// ...and from these values, the progressive average values of the
 		// physical quantities of interest:
@@ -275,7 +300,11 @@ int main()
 		// From the list of average values, compute the progressive
 		// uncertainties.
 		for(unsigned int i = 0; i < avg_current_measurements.size(); ++i)
-			std_current_measurements[i] = block_uncertainty(avg_current_measurements[i]);
+			block_uncertainty(
+					std::begin(avg_current_measurements[i]),
+					std::end(avg_current_measurements[i]),
+					std::back_inserter(std_current_measurements[i])
+					);
 
 		// Save the calculated quantities, then repeat.
 		// (The last value of each measurement is taken as the "final" value
@@ -304,35 +333,46 @@ int main()
 		output.close();
 	}
 
+	rng.SaveSeed();
 	return 0;
 }
 
-std::vector<double> block_average(const std::vector<double> & x, unsigned int n_blocks)
+template <class ForwardIterator, class OutputIterator>
+void block_average(ForwardIterator first, ForwardIterator last, OutputIterator avg_first, unsigned int block_size)
 {
-	// Returns a vector whose values are the averages of blocks of data
-	// from x.
-	std::vector<double> averages;
-	averages.reserve(n_blocks);
+    // If there are not enough values to form a block, typically
+    // when we are near the end of the input data, the remaining
+    // the points are discarded.
+    double sum(0), block_average(0);
+    for(unsigned int blocks = 1; std::distance(first, last) >= block_size; ++blocks)
+    {
+        // Sum the values in each block.
+        block_average = 0;
+        for(unsigned int j = 0; j < block_size; ++j)
+        {
+            block_average += *first;
+            ++first;
+            // At the end of each iteration of the main loop the first
+            // iterator will have advanced by block_size positions.
+        }
 
-	unsigned int block_size = static_cast<unsigned int>(std::round(
-				static_cast<double>(x.size()) / n_blocks
-				));
+        // Compute the average of that block.
+        block_average /= block_size;
+        sum           += block_average;
 
-	// Just to make sure:
-	assert(block_size * n_blocks == x.size());
+        // Save the results.
+        *avg_first     = sum / blocks;
+        ++avg_first;
+        // If the output iterators are back_inserters or similar iterators,
+        // they advance ad the next position when they are assigned a value,
+        // and the operator++ has no effect on them.
+    }
 
-	double block_sum;
-	for(unsigned int i = 0; i < n_blocks; ++i)
-	{
-		block_sum = 0;
-		for(unsigned int j = 0; j < block_size; ++j)
-			block_sum += x[i * block_size + j];
-		averages.push_back(block_sum / block_size);
-	}
-	return averages;
+	return;
 }
 
-std::vector<double> block_uncertainty(const std::vector<double> & x)
+template <class ForwardIterator, class OutputIterator>
+void block_uncertainty(ForwardIterator first, ForwardIterator last, OutputIterator err_first)
 {
 	// Returns the "progressive uncertainty" of the given vector of values,
 	// as if each element in the vector was a new measurement that improves
@@ -343,23 +383,22 @@ std::vector<double> block_uncertainty(const std::vector<double> & x)
 	// average values.
 	double avg(0), sq_avg(0);
 
-	std::vector<double> uncertainties;
-	uncertainties.reserve(x.size());
-
 	// As usual the uncertainty on the first measurement is undefined, so
 	// we start from the second one.
-	uncertainties.push_back(0);
+	*err_first = 0;
+	err_first++;
+
 	unsigned int count(2);
 	
-	for(auto v : x)
+	while(first != last)
 	{
-		avg    += v;
-		sq_avg += v * v;
-		uncertainties.push_back(
-				std::sqrt((sq_avg / count - std::pow(avg / count, 2)) / (count - 1))
-				);
+		avg    += *first;
+		sq_avg += std::pow(*first, 2);
+		*err_first = std::sqrt((sq_avg / count - std::pow(avg / count, 2)) / (count - 1));
 		++count;
+		++err_first;
+		++first;
 	}
 
-	return uncertainties;
+	return;
 }

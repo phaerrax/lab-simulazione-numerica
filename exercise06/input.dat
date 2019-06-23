@@ -1,0 +1,17 @@
+4000
+50
+1
+0.02
+1
+100
+44000
+
+----------------------------------------
+Input format:
+- number of equilibration steps
+- number of spins in the lattice
+- interaction energy
+- external magnetic field
+- "metro" flag (1: use Metropolis method, else use Gibbs method)
+- statistical block size
+- total steps of the simulation
