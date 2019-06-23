@@ -98,8 +98,8 @@ int main(int argc, char *argv[])
             block_size
             );
 
-	std::ofstream call_output_file("call-direct-price.dat"),
-	              put_output_file("put-direct-price.dat");
+	std::ofstream call_output_file("call_direct_price.dat"),
+	              put_output_file("put_direct_price.dat");
 	for(unsigned int i = 0; i < avg_call_option_price.size(); ++i)
 	{
 		call_output_file << avg_call_option_price[i] << " " << std_call_option_price[i] << "\n";
@@ -156,8 +156,8 @@ int main(int argc, char *argv[])
             block_size
             );
 
-	call_output_file.open("call-progressive-price.dat"),
-	put_output_file.open("put-progressive-price.dat");
+	call_output_file.open("call_progressive_price.dat"),
+	put_output_file.open("put_progressive_price.dat");
 	for(unsigned int i = 0; i < avg_call_option_price.size(); ++i)
 	{
 		call_output_file << avg_call_option_price[i] << " " << std_call_option_price[i] << "\n";

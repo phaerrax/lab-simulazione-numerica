@@ -1,8 +1,8 @@
 CC = g++
-SRCDIR = ../..
+SRCDIR = ..
 INCLUDE = $(SRCDIR)/include
 CFLAGS = -Wall -O3 --std=c++11 -I$(INCLUDE)
-EXNAME = exercise03-1
+EXNAME = exercise03
 
 .PHONY: clean
 
