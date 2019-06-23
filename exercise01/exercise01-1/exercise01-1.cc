@@ -90,8 +90,8 @@ int main(int argc, char *argv[])
         x[i] *= n_throws;
 
     // Output
-    std::ofstream average_output("uniformd-average.dat"),
-                  variance_output("uniformd-variance.dat");
+    std::ofstream average_output("uniformd_average.dat"),
+                  variance_output("uniformd_variance.dat");
     for(unsigned int i = 0; i < x.size(); ++i)
     {
         average_output << x[i] << " " << average_avg[i] << " " << average_std[i] << std::endl;
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
     }
 
     // Output
-    std::ofstream output("uniformd-chisquared-test.dat");
+    std::ofstream output("uniformd_chisquared_test.dat");
     for(unsigned int i = 0; i < chisquared_values.size(); ++i)
         output << i << " " << chisquared_values[i] << std::endl;
     output.close();

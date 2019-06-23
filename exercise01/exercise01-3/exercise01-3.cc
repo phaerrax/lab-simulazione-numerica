@@ -54,8 +54,8 @@ int main(int argc, char *argv[])
 
     const double L = 0.5; // The length of the stick.
 
-    const unsigned int n_tries(1e5),
-                       n_throws(1e2),
+    const unsigned int n_tries(1e4),
+                       n_throws(1e3), // (In each "try")
                        block_size(1e2);
     std::vector<double> pi_estimate,     // Average within a block.
                         pi_estimate_avg, // Overall average.

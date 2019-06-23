@@ -9,7 +9,7 @@
 std::string filename(std::string dist_name)
 {
     // Standard filename scheme of the output files.
-    return "central-limit-theorem-" + dist_name + "d.dat";
+    return "central_limit_theorem_" + dist_name + "d.dat";
 }
 
 int main(int argc, char *argv[])
