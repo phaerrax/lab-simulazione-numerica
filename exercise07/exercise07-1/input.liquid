@@ -4,12 +4,20 @@
 2.5
 0.065
 100000
-0
+200
 
-  ReadInput >> temp;
-  ReadInput >> npart;
-  ReadInput >> rho;
-  ReadInput >> rcut;
-  ReadInput >> step_sigma;
-  ReadInput >> n_steps;
-  ReadInput >> n_equilibration_steps;
+------------------------------------------
+Input format
+- temperature
+- number of particles
+- particle density
+- cutoff distance
+- standard deviation of the proposed step*
+- total number of steps
+- number of equilibration steps
+
+
+* i.e. at each step, a particle is displaced by an amount
+drawn from a normal distribution with mean 0 and this value
+of the standard deviation, then the new state is accepted
+of rejected according to the algorithm.

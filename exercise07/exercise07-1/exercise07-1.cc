@@ -52,7 +52,9 @@ int main(int argc, char *argv[])
     // Get the name of the input file from the command line
     if(argc != 2)
     {
-        std::cerr << "Error: too few arguments." << std::endl;
+        std::cerr << "Error: invalid input.\n"
+				  << "Syntax: " << argv[0] << " <type>\n"
+				  << "to use the parameters in the file \"input.type\"." << std::endl;
         return 1;
     }
 	std::string particle_type(argv[1]),
