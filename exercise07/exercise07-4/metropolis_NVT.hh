@@ -29,6 +29,9 @@ class metropolis_NVT
         void set_temperature(double);
         void set_distance_cutoff(double);
         void set_step_stdev(double);
+		// The stdev has to be already multiplied by the
+		// cell edge length, i.e. it is not meant to be
+		// input in relative units of the cell.
 
         // Extract thermodynamical quantities
         // ==================================

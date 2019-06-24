@@ -1,0 +1,19 @@
+0.8
+108
+1.1
+2.2
+0.0005
+10000
+10
+40
+
+------------------------------
+Input format:
+- temperature
+- number of particles
+- particle density
+- distance cutoff
+- integration time step
+- total number of steps
+- recording steps (== measure_steps)
+- block_size

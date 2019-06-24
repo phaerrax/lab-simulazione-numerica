@@ -45,32 +45,31 @@ int main(int argc, char *argv[])
 
     // Initialisation procedure
     // ========================
+	const std::string suffix("_verlet.dat");
     // Gather the type of the particle in the system and its thermodinamical
     // phase from the command-line arguments.
-    if(argc != 3)
+    if(argc != 2)
     {
         std::cerr << "Error: invalid input.\n"
-				  << "Syntax: " << argv[0] << " <element> <phase>\n"
-				  << "to use the parameters in the file \"./<element>/<phase>/input.dat\"." << std::endl;
+				  << "Syntax: " << argv[0] << " <phase>\n"
+				  << "to use the parameters in the file \"./<phase>/input" << suffix << "\"." << std::endl;
         return 1;
     }
 
-    std::string particle_type(argv[1]),
-                phase(argv[2]);
+    std::string phase(argv[1]);
 
     // The directory in which the input parameters and output files are
     // stored.
-    std::string prefix = particle_type + "/" + phase + "/";
+    const std::string prefix(phase + "/");
 
-    std::cout << "Classic Lennard-Jones fluid: "
-              << particle_type << " in a " << phase << " phase.\n"
+    std::cout << "Classic Lennard-Jones fluid: " << phase << " phase.\n"
               << "Molecular dynamics simulation in NVE ensemble\n\n"
               << "Interatomic potential V(r) = 4 * [(1/r)^12 - (1/r)^6]\n\n"
               << "The program uses Lennard-Jones units." << std::endl;
 
     // Read the input parameters from a file.
     // They have to be given in a very specific way...
-    std::string input_parameters_file(prefix + "input.dat");
+    std::string input_parameters_file(prefix + "input" + suffix);
     std::cout << "Read input parameters from " << input_parameters_file << "." << std::endl;
     std::ifstream input_parameters(input_parameters_file);
 
@@ -80,6 +79,8 @@ int main(int argc, char *argv[])
            distance_cutoff,
            time_step;
     unsigned int n_steps,
+                 measure_steps, // Physical measurements will be executed
+                                // every measure_steps steps.
                  block_size;
 
     input_parameters >> input_temperature
@@ -88,6 +89,7 @@ int main(int argc, char *argv[])
                      >> distance_cutoff
                      >> time_step
                      >> n_steps
+					 >> measure_steps
                      >> block_size;
 
     input_parameters.close();
@@ -167,8 +169,6 @@ int main(int argc, char *argv[])
     // n steps only, to save some time and memory.
 
     unsigned int n_conf(1),
-                 measure_step(10), // Physical measurements will be executed
-                                   // every measure_step steps.
 	             n_bins_rd(100); // of the radial dist function.
 
 	// Bins of the radial distribution function histogram.
@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
     for(unsigned int step = 1; step <= n_steps; ++step)
     {
         dynamo.move();
-        if(step % measure_step == 0)
+        if(step % measure_steps == 0)
         {
             progress = 100 * static_cast<double>(step) / n_steps;
             std::cerr << "\rNumber of time-steps: " << step << " / " << n_steps << " (" << std::round(progress) << "%)";
@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
             // The list of config_N.xyz files will be read by an external
             // program, i.e. ovito, which will be able then to visualise
             // the evolution of the system.
-            dynamo.write_config_xyz(prefix + "frames/config_" + std::to_string(n_conf) + ".xyz");
+			//dynamo.write_config_xyz(prefix + "frames/config_" + std::to_string(n_conf) + ".xyz");
             ++n_conf;
 			
 			auto results = dynamo.measure(n_bins_rd, max_distance_rd);
@@ -278,7 +278,6 @@ int main(int argc, char *argv[])
             block_size
             );
 
-	const std::string suffix("_verlet.dat");
 	std::ofstream avg_rd_output(prefix + "avg_radial_dist" + suffix),
 	              final_rd_output(prefix + "histogram_radial_dist" + suffix),
                   pot_en_output(prefix + "pot_energy" + suffix),

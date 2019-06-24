@@ -47,32 +47,31 @@ int main(int argc, char *argv[])
 
     // Initialisation procedure
     // ========================
+	const std::string suffix("_metropolis.dat");
     // Get the name of the input file from the command line
-    if(argc != 3)
+    if(argc != 2)
     {
         std::cerr << "Error: invalid input.\n"
-				  << "Syntax: " << argv[0] << " <element> <phase>\n"
-				  << "to use the parameters in the file \"./<element>/<phase>/input.dat\"." << std::endl;
+				  << "Syntax: " << argv[0] << " <phase>\n"
+				  << "to use the parameters in the file \"./<phase>/input" << suffix << "\"." << std::endl;
         std::cerr << "Error: too few arguments." << std::endl;
         return 1;
     }
 
-	std::string particle_type(argv[1]),
-				phase(argv[2]);
+	std::string phase(argv[1]);
 
     // The directory in which the input parameters and output files are
     // stored.
-    std::string prefix = particle_type + "/" + phase + "/";
+    const std::string prefix(phase + "/");
 
-    std::cout << "Classic Lennard-Jones fluid: "
-              << particle_type << " in a " << phase << " phase.\n"
+    std::cout << "Classic Lennard-Jones fluid: " << phase << " phase.\n"
               << "Molecular dynamics simulation in NVT ensemble\n\n"
               << "Interatomic potential V(r) = 4 * [(1/r)^12 - (1/r)^6]\n\n"
               << "The program uses Lennard-Jones units." << std::endl;
 
     // Read the input parameters from a file.
     // They have to be given in a very specific way...
-    std::string input_parameters_file(prefix + "input.dat");
+    std::string input_parameters_file(prefix + "input" + suffix);
     std::cout << "Read input parameters from " << input_parameters_file << "." << std::endl;
     std::ifstream input_parameters(input_parameters_file);
 
@@ -83,6 +82,7 @@ int main(int argc, char *argv[])
 		   step_stdev;
     unsigned int n_steps,
 				 n_equilibration_steps,
+				 measure_steps,
 				 block_size;
 
     input_parameters >> temperature
@@ -91,6 +91,7 @@ int main(int argc, char *argv[])
                      >> distance_cutoff
 					 >> step_stdev
                      >> n_steps
+					 >> measure_steps
 					 >> block_size
 					 >> n_equilibration_steps;
 
@@ -112,7 +113,7 @@ int main(int argc, char *argv[])
     // Initialisation
     // ==============
     dynamo.set_particle_density(particle_density);
-    dynamo.set_step_stdev(step_stdev);
+    dynamo.set_step_stdev(cell_edge_length * step_stdev);
     dynamo.set_temperature(temperature);
     dynamo.set_distance_cutoff(distance_cutoff);
 
@@ -172,33 +173,32 @@ int main(int argc, char *argv[])
 		for(unsigned int i = 0; i < n_particles; ++i)
 			dynamo.next(rng);
 
-        if(step % 1000)
+        if(step % measure_steps == 0)
         {
             progress = 100 * static_cast<double>(step) / n_steps;
-            std::cerr << "\rNumber of time-steps: " << step << " / " << n_steps << " (" << std::round(progress) << "%)";
-        }
+            std::cerr << "\rNumber of steps: " << step << " / " << n_steps << " (" << std::round(progress) << "%)";
 
-        progress = 100 * static_cast<double>(step) / n_steps;
-		/*
-		   I have to disable this part since the files it generates
-		   quickly eat up all the available disk space.
-        if(step % snapshot_steps == 0)
-        {
-            // The integer n_conf distinguishes between the "snapshots"
-            // of the system taken at regular times during the simulation.
-            // The list of config_N.xyz files will be read by an external
-            // program, i.e. ovito, which will be able then to visualise
-            // the evolution of the system.
-            dynamo.write_config_xyz("frames/config_" + std::to_string(n_conf) + ".xyz");
-            ++n_conf;
-        }
-		*/
+			/*
+			   I have to disable this part since the files it generates
+			   quickly eat up all the available disk space.
+			   if(step % snapshot_steps == 0)
+			   {
+					// The integer n_conf distinguishes between the "snapshots"
+					// of the system taken at regular times during the simulation.
+					// The list of config_N.xyz files will be read by an external
+					// program, i.e. ovito, which will be able then to visualise
+					// the evolution of the system.
+					dynamo.write_config_xyz("frames/config_" + std::to_string(n_conf) + ".xyz");
+					++n_conf;
+				}
+			*/
 
-		auto results = dynamo.measure(n_bins, max_distance_rd);
-        potential_en_density.push_back(std::get<0>(results));
-        pressure.push_back(std::get<1>(results));
-		radial_distribution.push_back(std::move(std::get<2>(results)));
-		// The results tuple is deleted anyway at the end of the iteration.
+			auto results = dynamo.measure(n_bins, max_distance_rd);
+			potential_en_density.push_back(std::get<0>(results));
+			pressure.push_back(std::get<1>(results));
+			radial_distribution.push_back(std::move(std::get<2>(results)));
+			// The results tuple is deleted anyway at the end of the iteration.
+        }
     }
     std::cerr << std::endl;
 
@@ -227,7 +227,6 @@ int main(int argc, char *argv[])
             block_size
             );
 
-	const std::string suffix("_metropolis.dat");
 	std::ofstream avg_rd_output(prefix + "avg_radial_dist" + suffix),
 	              final_rd_output(prefix + "histogram_radial_dist" + suffix),
                   pot_en_output(prefix + "pot_energy" + suffix),

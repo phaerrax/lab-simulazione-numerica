@@ -1,0 +1,23 @@
+1.1
+108
+0.8
+2.5
+0.012
+10000
+10
+54
+200
+
+------------------------------
+Input format:
+- temperature
+- number of particles
+- particle density
+- distance cutoff
+- stdev of the generated proposals
+- total number of steps
+- recording steps (== measure_steps)
+- block_size
+- equilibration steps
+
+*in relative units to the cell edge length

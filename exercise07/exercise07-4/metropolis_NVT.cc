@@ -106,6 +106,8 @@ void metropolis_NVT::next(Random & rng)
     // displacement sampled from a normal distribution.
     for(double & x : proposed_position)
 		x = quotient(x + rng.Gauss(0, stdev));
+		// stdev is measured in units of the cell edge length,
+		// since the positions are.
 
     total_proposals++;
 
