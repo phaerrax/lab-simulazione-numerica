@@ -4,7 +4,7 @@
 5.0
 0.0005
 10000
-10
+16
 
 === Pattern ===
   temperature
@@ -13,4 +13,4 @@
   cutoff radius
   integration step
   total n. of steps
-  iprint
+  block_size

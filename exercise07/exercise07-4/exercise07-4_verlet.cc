@@ -49,7 +49,9 @@ int main(int argc, char *argv[])
     // phase from the command-line arguments.
     if(argc != 3)
     {
-        std::cerr << "Error: too few arguments." << std::endl;
+        std::cerr << "Error: invalid input.\n"
+				  << "Syntax: " << argv[0] << " <element> <phase>\n"
+				  << "to use the parameters in the file \"./<element>/<phase>/input.dat\"." << std::endl;
         return 1;
     }
 
@@ -78,7 +80,7 @@ int main(int argc, char *argv[])
            distance_cutoff,
            time_step;
     unsigned int n_steps,
-                 print_steps;
+                 block_size;
 
     input_parameters >> input_temperature
                      >> n_particles
@@ -86,7 +88,7 @@ int main(int argc, char *argv[])
                      >> distance_cutoff
                      >> time_step
                      >> n_steps
-                     >> print_steps;
+                     >> block_size;
 
     input_parameters.close();
 
@@ -162,17 +164,9 @@ int main(int argc, char *argv[])
     // Now everything is in place for the algorithm to start the integration.
     // An intermediate snapshot of the system (a list of the position of the
     // particles and some thermodynamical quantities) is printed every
-    // 'print_steps' only, to save some time and memory.
-	std::ofstream avg_rd_output(prefix + "output.gofr.0"),
-	              final_rd_output(prefix + "output.gave.0"),
-                  pot_en_output(prefix + "output.pot_en.0"),
-                  kin_en_output(prefix + "output.kin_en.0"),
-                  tot_en_output(prefix + "output.tot_en.0"),
-                  temperature_output(prefix + "output.temperature.0"),
-                  pressure_output(prefix + "output.pressure.0");
+    // n steps only, to save some time and memory.
 
     unsigned int n_conf(1),
-                 block_size(n_steps / 100),
                  measure_step(10), // Physical measurements will be executed
                                    // every measure_step steps.
 	             n_bins_rd(100); // of the radial dist function.
@@ -284,6 +278,14 @@ int main(int argc, char *argv[])
             block_size
             );
 
+	const std::string suffix("_verlet.dat");
+	std::ofstream avg_rd_output(prefix + "avg_radial_dist" + suffix),
+	              final_rd_output(prefix + "histogram_radial_dist" + suffix),
+                  pot_en_output(prefix + "pot_energy" + suffix),
+                  kin_en_output(prefix + "kin_energy" + suffix),
+                  tot_en_output(prefix + "tot_energy" + suffix + suffix),
+                  temperature_output(prefix + "temperature" + suffix),
+                  pressure_output(prefix + "pressure" + suffix);
 	pot_en_output      << "steps pot_en_avg pot_en_std\n";
 	kin_en_output      << "steps kin_en_avg kin_en_std\n";
 	tot_en_output      << "steps tot_en_avg tot_en_std\n";
@@ -348,7 +350,7 @@ int main(int argc, char *argv[])
                 std::end(tr_radial_distribution[i]),
                 std::back_inserter(rd_averages[i]),
                 std::back_inserter(err),
-                tr_radial_distribution[i].size() / 100
+                block_size
                 );
 		// I am only interested in the averages and in the final stdev.
 
@@ -389,5 +391,6 @@ int main(int argc, char *argv[])
 		  	            << rd_final_stdev[j] << "\n";
 	final_rd_output.close();
 
+	rng.SaveSeed();
     return 0;
 }
