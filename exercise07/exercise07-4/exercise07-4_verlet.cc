@@ -339,16 +339,16 @@ int main(int argc, char *argv[])
 
 	// Call block_statistics on each subvector of tr_radial_distribution,
 	// that is on each "column" or radial_distribution.
-	std::vector<double> rd_final_stdev(tr_radial_distribution.size());
-	std::vector<std::vector<double>> rd_averages(tr_radial_distribution.size());
+	std::vector<double> rd_final_stdev;
+	std::vector<std::vector<double>> rd_averages;
 
-	for(unsigned int i = 0; i < tr_radial_distribution.size(); ++i)
+	for(auto & row : tr_radial_distribution)
 	{
-        std::vector<double> err;
+        std::vector<double> avg, err;
 		block_statistics(
-                std::begin(tr_radial_distribution[i]),
-                std::end(tr_radial_distribution[i]),
-                std::back_inserter(rd_averages[i]),
+                std::begin(row),
+                std::end(row),
+                std::back_inserter(avg),
                 std::back_inserter(err),
                 block_size
                 );
@@ -357,7 +357,8 @@ int main(int argc, char *argv[])
         // rd_averages[i] will be a n_blocks-long vector; its elements
         // are the block averages of the i-th bin.
         // rd_averages itself has n_bins elements.
-		rd_final_stdev[i] = err.back();
+		rd_averages.push_back(std::move(avg));
+		rd_final_stdev.push_back(err.back());
 	}
 
 	// Output the block averages of the radial distribution function.
@@ -367,17 +368,34 @@ int main(int argc, char *argv[])
 	avg_rd_output << "\n";
 	// ...then each row that follows contains the average, block by
 	// block, of each bin.
-	for(unsigned int i = 0; i < rd_averages.size(); ++i)
+
+	/*
+	   - rd_averages[i][*] are the values of the i-th bin
+	   as the block number increases.
+	   - rd_averages[*][j] are the values of the bins
+	   as the j-th data block is added to the count.
+	   - rd_averages[j][i] is the average value of the j-th
+	   bin at the i-th data block.
+
+	   rd_averages.size() == n_bins,
+	   rd_averages[0].size() == n_blocks (whatever that is).
+
+	   I want to output the values in such a way that each
+	   line corresponds to a block, i.e. it contains the
+	   values of all bins, sequentially, at a particular
+	   block.
+	   The following line will contain again the value of 
+	   all bins, but evaluated with one data block more
+	   (therefore they are a more accurate measurement).
+
+	   For this reason, I need to cycle on rd_averages
+	   firstly on the block index, secondly on the bin 
+	   index.
+	 */
+	for(unsigned int j = 0; j < rd_averages[0].size(); ++j)
 	{
-		// Each element in rd_averages is a histogram, that is the average
-		// histogram for that block.
-		// rd_averages[j][i] is the average value of the j-th bin for the
-		// i-th block.
-		for(unsigned int j = 0; j < rd_averages[0].size(); ++j)
-			// Each element in row is the value in a bin.
-			// i = 0, ..., n_bins;
-			// j = 0, ..., n_blocks.
-			avg_rd_output << rd_averages[j][i] << "  ";
+		for(unsigned int i = 0; i < rd_averages.size(); ++i)
+			avg_rd_output << rd_averages[i][j] << "  ";
 		avg_rd_output << "\n";
 	}
 	avg_rd_output.close();

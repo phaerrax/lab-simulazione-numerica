@@ -237,19 +237,17 @@ int main(int argc, char *argv[])
 	unsigned int steps;
     for(unsigned int j = 0; j < potential_en_density_avg.size(); ++j)
     {
+		// All four vectors in this loop have the same length,
+		// that is the number of blocks.
         steps = (j + 1) * block_size;
 		pot_en_output      << steps                       << " "
 						   << potential_en_density_avg[j] << " "
 					       << potential_en_density_std[j] << "\n";
-    }
-    pot_en_output.close();
-    for(unsigned int j = 0; j < pressure.size(); ++j)
-    {
-        steps = (j + 1) * block_size;
         pressure_output    << steps                       << " "
 			               << pressure_avg[j]             << " "
                            << pressure_std[j]             << "\n";
     }
+    pot_en_output.close();
     pressure_output.close();
 
 	// Calculate the average radial distribution with a blocking technique.
@@ -303,18 +301,33 @@ int main(int argc, char *argv[])
 	avg_rd_output << "\n";
 	// ...then each row that follows contains the average, block by
 	// block, of each bin.
+
+	/*
+	   - rd_averages[i][*] are the values of the i-th bin
+	   as the block number increases.
+	   - rd_averages[*][j] are the values of the bins
+	   as the j-th data block is added to the count.
+	   - rd_averages[j][i] is the average value of the j-th
+	   bin at the i-th data block.
+
+	   rd_averages.size() == n_bins,
+	   rd_averages[0].size() == n_blocks (whatever that is).
+
+	   I want to output the values in such a way that each
+	   line corresponds to a block, i.e. it contains the
+	   values of all bins, sequentially, at a particular
+	   block.
+	   The following line will contain again the value of 
+	   all bins, but evaluated with one data block more
+	   (therefore they are a more accurate measurement).
+
+	   For this reason, I need to cycle on rd_averages
+	   firstly on the block index, secondly on the bin 
+	   index.
+	 */
 	for(unsigned int j = 0; j < rd_averages[0].size(); ++j)
 	{
-		// Each element in rd_averages is a histogram, that is the average
-		// histogram for that block.
-		// rd_averages[j][i] is the average value of the j-th bin for the
-		// i-th block.
-		// rd_averages.size() == n_bins,
-		// rd_averages[0].size() == n_blocks (whatever that is).
 		for(unsigned int i = 0; i < rd_averages.size(); ++i)
-			// Each element in row is the value in a bin.
-			// i = 0, ..., n_bins;
-			// j = 0, ..., n_blocks.
 			avg_rd_output << rd_averages[i][j] << "  ";
 		avg_rd_output << "\n";
 	}
