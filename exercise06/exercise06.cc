@@ -227,8 +227,16 @@ int main()
 		// Start the simulation.
 		for(unsigned int step = 0; step < equilibration_steps; ++step)
 		{
-			sim.next_gibbs(rng);
-			sim_zero.next_gibbs(rng);
+			if(metro == 1)
+			{
+				sim.next_metropolis(rng);
+				sim_zero.next_metropolis(rng);
+			}
+			else
+			{
+				sim.next_gibbs(rng);
+				sim_zero.next_gibbs(rng);
+			}
 		}
 		for(unsigned int step = equilibration_steps; step < n_steps; ++step)
 		{
@@ -236,8 +244,16 @@ int main()
 			spin_sum.push_back(sim.get_spin_sum());
 			spin_sum_zero.push_back(sim_zero.get_spin_sum());
 
-			sim.next_gibbs(rng);
-			sim_zero.next_gibbs(rng);
+			if(metro == 1)
+			{
+				sim.next_metropolis(rng);
+				sim_zero.next_metropolis(rng);
+			}
+			else
+			{
+				sim.next_gibbs(rng);
+				sim_zero.next_gibbs(rng);
+			}
 		}
 
 		// Calculate the square of the Hamiltonian and the sum of spins.
@@ -341,7 +357,12 @@ int main()
 
 	for(unsigned int i = 0; i < measurements.size(); ++i)
 	{
-		output.open(measurement_names[i] + ".dat");
+		std::string filename(measurement_names[i]);
+		if(metro == 1)
+			filename += "_metropolis.dat";
+		else
+			filename += "_gibbs.dat";
+		output.open(filename);
 		for(unsigned int j = 0; j < temperatures.size(); ++j)
 			output << std::setw(col_width) << temperatures[j]
 				   << std::setw(col_width) << measurements[i][j].first
