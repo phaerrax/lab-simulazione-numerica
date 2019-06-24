@@ -1,6 +1,8 @@
 #include "ising_1d_sim.hh"
 #include "random.hh"
 #include <numeric>
+#include <numeric>
+#include <algorithm>
 #include <cmath>
 
 ising_1d_sim::ising_1d_sim(unsigned int n_spins, Random & rng)
@@ -43,7 +45,20 @@ void ising_1d_sim::next_metropolis(Random & rng)
 	// Try to flip every spin in the configuration with the Metropolis
 	// algorithm.
 	double energy_diff;
-	for(unsigned int i = 0; i < spins.size(); ++i)
+	std::vector<unsigned int> draw_order(spins.size());
+	std::iota(draw_order.begin(), draw_order.end(), 0);
+	// Select, in random order, all the spins of the system.
+	std::random_shuffle(
+			std::begin(draw_order),
+			std::end(draw_order),
+			// std::random_shuffle needs a function that generates (uniformly)
+			// a non-negative value less than its argument.
+			[&rng](int n) {
+				return static_cast<int>(rng.Rannyu(0, n));
+			}
+			);
+
+	for(auto i : draw_order)
 	{
 		energy_diff = 2 * spins[quotient(i)] * (interaction_energy * (spins[quotient(i + 1)] + spins[quotient(i - 1)]) + ext_magnetic_field);
         // The acceptance threshold is less than 1 iff the energy difference
