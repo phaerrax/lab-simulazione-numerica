@@ -5,6 +5,7 @@
 0.0005
 10000
 40
+200
 
 === Pattern ===
   temperature
@@ -14,3 +15,4 @@
   integration step
   total n. of steps
   block_size
+  equilibration steps (ignored by the _verlet program)

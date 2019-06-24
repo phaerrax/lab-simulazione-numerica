@@ -12,5 +12,8 @@ EXNAME = exercise07-4
 $(EXNAME)_verlet: $(EXNAME)_verlet.o $(INCLUDE)/random.o molecular_dynamics_sim.o $(INCLUDE)/statistics.hh
 	$(CC) $^ -o $@
 
+$(EXNAME)_metropolis: $(EXNAME)_metropolis.o $(INCLUDE)/random.o metropolis_NVT.o $(INCLUDE)/statistics.hh
+	$(CC) $^ -o $@
+
 clean:
 	rm *.o $(EXNAME) seed.out
