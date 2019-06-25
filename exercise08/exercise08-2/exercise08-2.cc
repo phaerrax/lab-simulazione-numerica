@@ -44,17 +44,33 @@ int main(int argc, char * argv[])
     else
         std::cerr << "Unable to open seed.in." << std::endl;
 
-	if(argc != 3)
+	if(argc != 2)
 	{
-		std::cerr << "Too few arguments (3 required)." << std::endl;
+		std::cerr << "Error: invalid input. Input file is missing.\n"
+				  << "Syntax: " << argv[0] << " <input_file>" << std::endl;
 		return 1;
 	}
 
+	std::string input_parameters_filename(argv[1]);
+	std::ifstream input_parameters_file(input_parameters_filename);
+	double mu,
+		   sigma,
+           L;
+	if(input_parameters_file.is_open())
+	{
+		input_parameters_file >> mu
+							  >> sigma
+							  >> L;
+	}
+	else
+	{
+		std::cerr << "Error: unable to open " << input_parameters_filename << "." << std::endl;
+		return 2;
+	}
+	input_parameters_file.close();
+
     const unsigned int dim = 1;
-	double mu(std::stod(argv[1])),
-		   sigma(std::stod(argv[2]));
-    double L(1.2);
-    metropolis_uniform<dim> metro(-L, L);
+    metropolis_uniform<dim> metro(-0.5 * L, 0.5 * L);
     
     std::array<double, dim> start = {0};
     metro.set_starting_point(start);
@@ -117,7 +133,7 @@ int main(int argc, char * argv[])
             std::back_inserter(energy_std),
             energy_samples.size() / n_blocks
             );
-    for(unsigned int j = 0; j < energy_samples.size(); ++j)
+    for(unsigned int j = 0; j < energy_avg.size(); ++j)
 	{
 		steps = (j + 1) * n_steps / n_blocks;
         output_file << std::setw(col_width) << steps
@@ -131,5 +147,6 @@ int main(int argc, char * argv[])
 	std::ostream_iterator<double> sequence_output(sequence_output_file, "\n");
 	std::copy(sequence.begin(), sequence.end(), sequence_output);
 
+	rng.SaveSeed();
     return 0;
 }

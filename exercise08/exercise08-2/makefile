@@ -4,7 +4,8 @@ INCLUDE = $(SRCDIR)/include
 CFLAGS = -Wall -O3 --std=c++11 -I$(INCLUDE)
 EXNAME = exercise08-2
 
-.PHONY: clean
+.PHONY: clean, all
+.DEFAULT_GOAL := all
 
 %.o: %.cc
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -12,8 +13,10 @@ EXNAME = exercise08-2
 $(EXNAME): $(EXNAME).o $(INCLUDE)/random.o $(INCLUDE)/statistics.hh
 	$(CC) $^ -o $@
 
-$(EXNAME)-grid: $(EXNAME)-grid.o $(INCLUDE)/random.o $(INCLUDE)/statistics.hh
+$(EXNAME)_grid: $(EXNAME)_grid.o $(INCLUDE)/random.o $(INCLUDE)/statistics.hh
 	$(CC) $^ -o $@
 
+all: $(EXNAME) $(EXNAME)_grid
+
 clean:
-	rm *.o $(EXNAME) seed.out
+	rm *.o $(EXNAME) $(EXNAME)_grid seed.out
