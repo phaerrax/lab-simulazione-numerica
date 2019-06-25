@@ -251,9 +251,9 @@ int main(int argc, char ** argv)
 		return static_cast<unsigned int>(conf_elements * std::pow(rng.Rannyu(), 0.5));
 	};
 
-	std::ofstream output_evolution("evolution_" + type + ".dat"),
-	              output_best_fit_length("best_fit_length_" + type + ".dat"),
-	              output_averaged_best_length("averaged_best_length_" + type + ".dat");
+	std::ofstream output_evolution(type + "/evolution.dat"),
+	              output_best_fit_length(type + "/best_fit_length.dat"),
+	              output_averaged_best_length(type + "/averaged_best_length.dat");
 
 	do
 	{
@@ -395,7 +395,7 @@ int main(int argc, char ** argv)
 	// Output procedures
 	// =================
 	// Output the list of cities on a file.
-	std::ofstream cities_output_file("cities.dat");
+	std::ofstream cities_output_file(type + "/cities.dat");
 
     const unsigned int col_width = 16;
     cities_output_file.precision(4);
@@ -409,6 +409,7 @@ int main(int argc, char ** argv)
 	}
 	cities_output_file.close();
 
+	rng.SaveSeed();
 	return 0;
 }
 
