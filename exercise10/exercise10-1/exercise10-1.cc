@@ -182,7 +182,7 @@ int main(int argc, char ** argv)
 	unsigned int n_proposals(0),
 				 accepted_proposals(0);
 
-	std::ofstream output_evolution("evolution_" + type + ".dat");
+	std::ofstream output_evolution(type + "/evolution.dat");
 	
     const unsigned int col_width = 16;
     output_evolution.precision(4);
@@ -287,12 +287,12 @@ int main(int argc, char ** argv)
 	// Output procedures
 	// =================
 	// Output the best configuration.
-	std::ofstream best_output("best_path.dat");
+	std::ofstream best_output(type + "/best_path.dat");
 	best_output << print(current_config);
 	best_output.close();
 
 	// Output the list of cities on a file.
-	std::ofstream cities_output_file("cities.dat");
+	std::ofstream cities_output_file(type + "/cities.dat");
 
     cities_output_file.precision(4);
     cities_output_file << std::scientific;

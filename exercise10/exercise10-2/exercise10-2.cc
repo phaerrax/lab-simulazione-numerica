@@ -90,7 +90,6 @@ int main(int argc, char ** argv)
             input >> property;
             if(property == "RANDOMSEED")
             {
-				std::cerr << "(" << rank << ") " << p_subprocess[0] << " " << p_subprocess[1] << std::endl;
                 input >> seed[0] >> seed[1] >> seed[2] >> seed[3];
                 rng.SetRandom(seed, p_subprocess[0], p_subprocess[1]);
             }
@@ -262,9 +261,8 @@ int main(int argc, char ** argv)
 	// | Main algorithm |
 	// +----------------+
 
-	std::ofstream output_evolution("evolution_" + type + "_" + std::to_string(rank) + ".dat");
+	std::ofstream output_evolution(type + "/evolution_" + std::to_string(rank) + ".dat");
 
-	const unsigned int col_width = 16;
 	output_evolution.precision(4);
 	output_evolution << std::scientific;
 
@@ -427,12 +425,17 @@ int main(int argc, char ** argv)
 
 	output_evolution.close();
 
+	/*
+	   Don't need this now, but it may be useful in the
+	   future, so I keep it commented.
+
 	// Output procedures
 	// =================
 	// Output the best configuration.
-	// std::ofstream best_output("best_path.dat");
-	// best_output << print(current_config);
-	// best_output.close();
+	const unsigned int col_width = 16;
+	std::ofstream best_output("best_path.dat");
+	best_output << print(current_config);
+	best_output.close();
 
 	// Output the list of cities on a file.
 	// (manager process)
@@ -451,6 +454,7 @@ int main(int argc, char ** argv)
 		}
 		cities_output_file.close();
 	}
+	*/
 
 	MPI::Finalize();
 
