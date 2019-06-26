@@ -406,14 +406,12 @@ double molecular_dynamics_sim::get_pressure()
     }
 
     // The pressure is given by
-    // density * Boltzmann constant * temperature + w / (3 * volume)
+    // density * k_B * temperature + w / (3 * volume)
     // where w is
     // 48 * energy_scale * [r(i,j)^-12 - 0.5 * r(i,j)^-6] / n_particles
     // summed over distinct pairs (i,j), with r(i,j) being the distance
     // between particles i and j in reduced units.
-    // In reduced units, the volume is 1 so the pressure becomes
-    // density * temperature + w / 3.
-    // (In the calculations below we factored out the 48.)
+    // (In the calculations below I factored out the 48.)
     unsigned int n_coordinates = position.begin()->size();
     std::vector<double> displacement(n_coordinates);
     double w(0), sq_distance;
@@ -433,7 +431,8 @@ double molecular_dynamics_sim::get_pressure()
                 w += pow(sq_distance, -6) - 0.5 * pow(sq_distance, -3);
         }
 
-    return particle_density * ms_velocity / (3 * n_particles) + 16 * w;
+	double volume(std::pow(cell_edge_length, 3));
+    return particle_density * ms_velocity / (3 * n_particles) + 16 * w / volume;
 }
 
 std::vector<double> molecular_dynamics_sim::get_radial_distribution(unsigned int n_bins, double max_distance) const
@@ -509,7 +508,8 @@ molecular_dynamics_sim::measure(unsigned int n_bins, double max_distance)
 		   distance,
 		   potential_en(0),
 		   kinetic_en,
-		   pressure(0);
+		   pressure,
+		   w(0);
 
 	std::vector<unsigned int> radial_count(n_bins, 0);
 
@@ -547,14 +547,13 @@ molecular_dynamics_sim::measure(unsigned int n_bins, double max_distance)
 			// Potential energy and pressure.
             if(distance < distance_cutoff)
 			{
-                potential_en += 4. * pow(distance, -12) - 4. * pow(distance, -6);
-                pressure += pow(distance, -12) - 0.5 * pow(distance, -6);
+                potential_en += 4. * std::pow(distance, -12) - 4. * std::pow(distance, -6);
+                w += std::pow(distance, -12) - 0.5 * std::pow(distance, -6);
 			}
 
 		}
 
     potential_en /= n_particles;
-	pressure *= 16;
 
 	// Normalise the histogram.
 	double shell_volume;
@@ -573,6 +572,7 @@ molecular_dynamics_sim::measure(unsigned int n_bins, double max_distance)
 
     temperature = ms_velocity / (3 * n_particles);
     kinetic_en = ms_velocity / (2 * n_particles);
+    pressure = particle_density * temperature + 16. * w * std::pow(cell_edge_length, -3);
 
 	return std::make_tuple(
 			temperature,

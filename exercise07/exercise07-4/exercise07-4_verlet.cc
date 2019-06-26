@@ -203,9 +203,9 @@ int main(int argc, char *argv[])
 			
 			auto results = dynamo.measure(n_bins_rd, max_distance_rd);
 
-            temperature.push_back(std::get<0>(results));
+            //temperature.push_back(std::get<0>(results));
             potential_en_density.push_back(std::get<1>(results));
-            kinetic_en_density.push_back(std::get<2>(results));
+            //kinetic_en_density.push_back(std::get<2>(results));
             pressure.push_back(std::get<3>(results));
 			radial_distribution.push_back(std::move(std::get<4>(results)));
 			// The results tuple is deleted anyway at the end of the iteration.
@@ -215,26 +215,10 @@ int main(int argc, char *argv[])
 
     dynamo.write_config("config.final");
 
-    // Sum potential and kinetic energy together.
-    std::vector<double> total_en_density(potential_en_density.size());
-    std::transform(
-            potential_en_density.begin(), // Beginning of first range;
-            potential_en_density.end(),   // end of first range;
-            kinetic_en_density.begin(),   // beginning of second range;
-            total_en_density.begin(),     // beginning of results range;
-            std::plus<double>()           // binary operation (first, second)
-            );
-
     // Calculate average values and standard deviation of the measured
     // physical quantities.
     std::vector<double> potential_en_density_avg,
                         potential_en_density_std,
-                        kinetic_en_density_avg,
-                        kinetic_en_density_std,
-                        total_en_density_avg,
-                        total_en_density_std,
-                        temperature_avg,
-                        temperature_std,
                         pressure_avg,
                         pressure_std;
 
@@ -243,30 +227,6 @@ int main(int argc, char *argv[])
             std::end(potential_en_density),
             std::back_inserter(potential_en_density_avg),
             std::back_inserter(potential_en_density_std),
-            block_size
-            );
-
-    block_statistics(
-            std::begin(kinetic_en_density),
-            std::end(kinetic_en_density),
-            std::back_inserter(kinetic_en_density_avg),
-            std::back_inserter(kinetic_en_density_std),
-            block_size
-            );
-
-    block_statistics(
-            std::begin(total_en_density),
-            std::end(total_en_density),
-            std::back_inserter(total_en_density_avg),
-            std::back_inserter(total_en_density_std),
-            block_size
-            );
-
-    block_statistics(
-            std::begin(temperature),
-            std::end(temperature),
-            std::back_inserter(temperature_avg),
-            std::back_inserter(temperature_std),
             block_size
             );
 
@@ -281,15 +241,9 @@ int main(int argc, char *argv[])
 	std::ofstream avg_rd_output(prefix + "avg_radial_dist" + suffix),
 	              final_rd_output(prefix + "histogram_radial_dist" + suffix),
                   pot_en_output(prefix + "pot_energy" + suffix),
-                  kin_en_output(prefix + "kin_energy" + suffix),
-                  tot_en_output(prefix + "tot_energy" + suffix + suffix),
-                  temperature_output(prefix + "temperature" + suffix),
                   pressure_output(prefix + "pressure" + suffix);
-	pot_en_output      << "steps pot_en_avg pot_en_std\n";
-	kin_en_output      << "steps kin_en_avg kin_en_std\n";
-	tot_en_output      << "steps tot_en_avg tot_en_std\n";
-	temperature_output << "steps temperature_avg temperature_std\n";
-	pressure_output    << "steps pressure_avg pressure_std\n";
+	pot_en_output   << "steps pot_en_avg pot_en_std\n";
+	pressure_output << "steps pressure_avg pressure_std\n";
 	unsigned int steps;
     for(unsigned int j = 0; j < potential_en_density_avg.size(); ++j)
     {
@@ -297,23 +251,11 @@ int main(int argc, char *argv[])
 		pot_en_output      << steps                       << " "
 						   << potential_en_density_avg[j] << " "
 					       << potential_en_density_std[j] << "\n";
-        kin_en_output      << steps                       << " "
-			               << kinetic_en_density_avg[j]   << " "
-                           << kinetic_en_density_std[j]   << "\n";
-        tot_en_output      << steps                       << " "
-			               << total_en_density_avg[j]     << " "
-                           << total_en_density_std[j]     << "\n";
-        temperature_output << steps                       << " "
-			               << temperature_avg[j]          << " "
-                           << temperature_std[j]          << "\n";
         pressure_output    << steps                       << " "
 			               << pressure_avg[j]             << " "
                            << pressure_std[j]             << "\n";
     }
     pot_en_output.close();
-    kin_en_output.close();
-    tot_en_output.close();
-    temperature_output.close();
     pressure_output.close();
 
 	// Calculate the average radial distribution with a blocking technique.

@@ -220,13 +220,11 @@ double metropolis_NVT::get_potential_energy_density() const
 double metropolis_NVT::get_pressure() const
 {
     // The pressure is given by
-    // w / (3 * volume)
+    // rho * k_B * temperature + w / (3 * volume)
     // where w is
     // 48 * energy_scale * [r(i,j)^-12 - 0.5 * r(i,j)^-6] / n_particles
     // summed over distinct pairs (i,j), with r(i,j) being the distance
     // between particles i and j in reduced units.
-    // In reduced units, the volume is 1 so the pressure becomes
-    // 48 * w / 3.
     std::vector<double> displacement;
     double w(0), sq_distance;
     // Cycle over pairs of particles only.
@@ -241,10 +239,11 @@ double metropolis_NVT::get_pressure() const
             // in even powers only, so we don't need to compute the square
             // root.
             if(sq_distance < std::pow(distance_cutoff, 2))
-                w += pow(sq_distance, -6) - 0.5 * pow(sq_distance, -3);
+                w += std::pow(sq_distance, -3) * (std::pow(sq_distance, -3) - 0.5);
         }
 
-    return 16. * w;
+	double volume(std::pow(cell_edge_length, 3));
+    return particle_density * temperature + 16. * w / volume;
 }
 
 std::tuple<double, double, std::vector<double>>
@@ -254,7 +253,8 @@ metropolis_NVT::measure(unsigned int n_bins, double max_distance) const
 
     double distance,
 		   potential_en(0),
-		   pressure(0);
+		   pressure,
+		   w(0);
 
 	std::vector<unsigned int> radial_count(n_bins, 0);
 
@@ -292,14 +292,13 @@ metropolis_NVT::measure(unsigned int n_bins, double max_distance) const
 			// Potential energy and pressure.
             if(distance < distance_cutoff)
 			{
-                potential_en += 4. * pow(distance, -12) - 4. * pow(distance, -6);
-                pressure += pow(distance, -12) - 0.5 * pow(distance, -6);
+                potential_en += 4. * std::pow(distance, -12) - 4. * std::pow(distance, -6);
+                w += std::pow(distance, -12) - 0.5 * std::pow(distance, -6);
 			}
-
 		}
 
     potential_en /= n_particles;
-	pressure *= 16;
+    pressure = particle_density * temperature + 16. * w * std::pow(cell_edge_length, -3);
 
 	// Normalise the histogram.
 	double shell_volume;
