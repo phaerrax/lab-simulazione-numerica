@@ -46,24 +46,22 @@ int main(int argc, char *argv[])
     // ========================
     // Gather the type of the particle in the system and its thermodinamical
     // phase from the command-line arguments.
-    if(argc != 3)
+    if(argc != 2)
     {
         std::cerr << "Error: invalid input.\n\n"
-				  << "Syntax: " << argv[0] << " <element> <phase>\n"
-				  << "(for example: " << argv[0] << " krypton liquid)"
+				  << "Syntax: " << argv[0] << " <phase>\n"
+				  << "(for example: " << argv[0] << " liquid)"
 				  << std::endl;
         return 1;
     }
 
-    std::string particle_type(argv[1]),
-                phase(argv[2]);
+    std::string phase(argv[1]);
 
     // The directory in which the input parameters and output files are
     // stored.
-    std::string prefix = particle_type + "/" + phase + "/";
+    std::string prefix = phase + "/";
 
-    std::cout << "Classic Lennard-Jones fluid: "
-              << particle_type << " in a " << phase << " phase.\n"
+    std::cout << "Classic Lennard-Jones fluid in a " << phase << " phase.\n"
               << "Molecular dynamics simulation in NVE ensemble\n\n"
               << "Interatomic potential V(r) = 4 * [(1/r)^12 - (1/r)^6]\n\n"
               << "The program uses Lennard-Jones units." << std::endl;
@@ -177,15 +175,15 @@ int main(int argc, char *argv[])
     // An intermediate snapshot of the system (a list of the position of the
     // particles and some thermodynamical quantities) is printed every
     // 'snapshots_steps' only, to save some time and memory.
-    std::ofstream potential_en_output(prefix + "output_potential_en.dat"),
-                  kinetic_en_output(prefix + "output_kinetic_en.dat"),
-                  total_en_output(prefix + "output_total_en.dat"),
-                  temperature_output(prefix + "output_temperature.dat"),
-                  pressure_output(prefix + "output_pressure.dat");
+    std::ofstream potential_en_output(prefix + "pot_energy.dat"),
+                  kinetic_en_output(prefix + "kin_energy.dat"),
+                  total_en_output(prefix + "tot_energy.dat"),
+                  temperature_output(prefix + "temperature.dat"),
+                  pressure_output(prefix + "pressure.dat");
 
     unsigned int n_conf(1);
 
-    dynamo.write_config_xyz("frames/config_0.xyz");
+    dynamo.write_config_xyz(prefix + "frames/config_0.xyz");
 
     std::vector<double> potential_en_density,
                         kinetic_en_density,
@@ -212,7 +210,7 @@ int main(int argc, char *argv[])
         }
 		if(step % snapshots_steps == 0)
 		{
-            dynamo.write_config_xyz("frames/config_" + std::to_string(n_conf) + ".xyz");
+            dynamo.write_config_xyz(prefix + "frames/config_" + std::to_string(n_conf) + ".xyz");
             ++n_conf;
 		}
     }
@@ -283,17 +281,29 @@ int main(int argc, char *argv[])
             block_size
             );
 
+	potential_en_output << "steps pot_en_avg pot_en_std\n";
+	kinetic_en_output   << "steps kin_en_avg kin_en_std\n";
+	total_en_output     << "steps tot_en_avg tot_en_std\n";
+	temperature_output  << "steps temperature_avg temperature_std\n";
+	pressure_output     << "steps pressure_avg pressure_std\n";
+	unsigned int steps;
     for(unsigned int j = 0; j < potential_en_density_avg.size(); ++j)
     {
-        potential_en_output << potential_en_density_avg[j] << " "
+        steps = (j + 1) * block_size;
+        potential_en_output << steps                       << " "
+			                << potential_en_density_avg[j] << " "
                             << potential_en_density_std[j] << "\n";
-        kinetic_en_output   << kinetic_en_density_avg[j]   << " "
+        kinetic_en_output   << steps                       << " "
+			                << kinetic_en_density_avg[j]   << " "
                             << kinetic_en_density_std[j]   << "\n";
-        total_en_output     << total_en_density_avg[j]     << " "
+        total_en_output     << steps                       << " "
+			                << total_en_density_avg[j]     << " "
                             << total_en_density_std[j]     << "\n";
-        temperature_output  << temperature_avg[j]          << " "
+        temperature_output  << steps                       << " "
+			                << temperature_avg[j]          << " "
                             << temperature_std[j]          << "\n";
-        pressure_output     << pressure_avg[j]             << " "
+        pressure_output     << steps                       << " "
+			                << pressure_avg[j]             << " "
                             << pressure_std[j]             << "\n";
     }
     potential_en_output.close();
