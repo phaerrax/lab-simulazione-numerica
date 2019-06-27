@@ -1,5 +1,6 @@
 #include "molecular_dynamics_sim.hh"
 #include <sstream>
+#include <algorithm>
 #include <numeric>
 #include <iomanip>
 #include <fstream>
@@ -319,19 +320,18 @@ void molecular_dynamics_sim::move(void)
     return;
 }
 
-double molecular_dynamics_sim::force(unsigned int this_particle, unsigned int dir) const
+double molecular_dynamics_sim::force(unsigned int n, unsigned int dir) const
 {
+	// 0 <= n < n_particles.
     // Compute (adimensional) forces as -grad V(x).
     double f(0), sq_distance;
-    unsigned int n_coordinates = position.begin()->size();
-    std::vector<double> displacement(n_coordinates);
-
-    for(unsigned int i = 0; i < n_particles; ++i)
+	auto this_particle = position.begin() + n;
+    std::vector<double> displacement;
+    for(auto x = position.begin(); x != position.end(); ++x)
     {
-        if(i != this_particle)
+        if(x != this_particle)
         {
-            for(unsigned int d = 0; d < n_coordinates; ++d)
-                displacement[d] = quotient(position[this_particle][d] - position[i][d]);
+			displacement = quotient(*this_particle - *x);
             sq_distance = std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.);
             // In the expression for the force the distance appears in even
             // powers only, so we don't need to compute the square root.
@@ -358,15 +358,13 @@ double molecular_dynamics_sim::get_temperature() const
 
 double molecular_dynamics_sim::get_potential_energy_density() const
 {
-    unsigned int n_coordinates = position.begin()->size();
-    std::vector<double> displacement(n_coordinates);
+    std::vector<double> displacement;
     double potential_en(0), sq_distance;
     // Cycle over pairs of particles only.
-    for(unsigned int i = 0; i < n_particles - 1; ++i)
-        for(unsigned int j = i + 1; j < n_particles; ++j)
+    for(auto x = position.begin(); x != position.end(); ++x)
+        for(auto y = x + 1; y != position.end(); ++y)
         {
-            for(unsigned int d = 0; d < n_coordinates; ++d)
-                displacement[d] = quotient(position[i][d] - position[j][d]);
+			displacement = quotient(*x - *y);
             // In the computation of the potential en include only
             // the pairs whose distance is less than the cutoff radius.
             sq_distance = std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.);
@@ -398,6 +396,14 @@ double molecular_dynamics_sim::get_pressure() const
     // We can save some time if the temperature has already been calculated.
     if(!ms_velocity_already_computed)
     {
+		/*
+		   This is called ms_velocity but really it is the sum
+		   of the square velocity of each particle. There is
+		   nothing "mean" here. I should probably change the
+		   name of this variable.
+		   The code treats this variable correctly, though, so
+		   there should be no bugs related to this.
+		*/
         ms_velocity = 0;
         for(auto & v : velocity)
             ms_velocity += std::inner_product(v.begin(), v.end(), v.begin(), 0.);
@@ -413,26 +419,22 @@ double molecular_dynamics_sim::get_pressure() const
     // In reduced units, the volume is 1 so the pressure becomes
     // density * temperature + w / 3.
     // (In the calculations below we factored out the 48.)
-    unsigned int n_coordinates = position.begin()->size();
-    std::vector<double> displacement(n_coordinates);
+    std::vector<double> displacement;
     double w(0), sq_distance;
     // Cycle over pairs of particles only.
-    for(unsigned int i = 0; i < n_particles - 1; ++i)
-        for(unsigned int j = i + 1; j < n_particles; ++j)
-        {
-            for(unsigned int d = 0; d < n_coordinates; ++d)
-                displacement[d] = quotient(position[i][d] - position[j][d]);
-            // In the computation of the potential en include only
-            // the pairs whose distance is less than the cutoff radius.
+    for(auto x = position.begin(); x != position.end(); ++x)
+		for(auto y = x + 1; y != position.end(); ++y)
+		{
+			displacement = quotient(*x - *y);
             sq_distance = std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.);
-            // In the expression for the potential energy the distance appears
-            // in even powers only, so we don't need to compute the square
-            // root.
+            // In the computation of the pressure include only
+            // the pairs whose distance is less than the cutoff radius.
             if(sq_distance < std::pow(distance_cutoff, 2))
-                w += pow(sq_distance, -6) - 0.5 * pow(sq_distance, -3);
+                w += std::pow(sq_distance, -3) * (std::pow(sq_distance, -3) - 0.5);
         }
+	w /= n_particles * n_particles / 2.;
 
-    return particle_density * ms_velocity / (3 * n_particles) + 16 * w;
+    return particle_density * ms_velocity / (3. * n_particles) + 16. * w * std::pow(cell_edge_length, -3);
 }
 
 void molecular_dynamics_sim::write_config(const std::string & output_file) const
@@ -485,4 +487,32 @@ void molecular_dynamics_sim::write_config_xyz(const std::string & output_file) c
 double molecular_dynamics_sim::quotient(double r) const
 {  
     return r - cell_edge_length * std::round(r / cell_edge_length);
+}
+
+std::vector<double> molecular_dynamics_sim::quotient(const std::vector<double> & r) const
+{  
+    std::vector<double> result;
+    for(auto x : r)
+        result.push_back(quotient(x));
+
+    return result;
+}
+
+std::vector<double> operator+(const std::vector<double> & lhs, const std::vector<double> & rhs)
+{
+    std::vector<double> result;
+    std::transform(lhs.begin(), lhs.end(), rhs.begin(), std::back_inserter(result), std::plus<double>());
+    return result;
+}
+
+std::vector<double> operator-(const std::vector<double> & v)
+{
+    std::vector<double> result;
+    std::transform(v.begin(), v.end(), std::back_inserter(result), std::negate<double>());
+    return result;
+}
+
+std::vector<double> operator-(const std::vector<double> & lhs, const std::vector<double> & rhs)
+{
+    return lhs + (-rhs);
 }

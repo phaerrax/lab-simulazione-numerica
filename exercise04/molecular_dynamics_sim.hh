@@ -87,6 +87,7 @@ class molecular_dynamics_sim
         // 'particle_index', in the direction 'dir'.
 
         double quotient(double) const;
+        std::vector<double> quotient(const std::vector<double> &) const;
         // Quotient the position/distance/etc. in order to reduce everything
         // to the unit cell of the lattice.
         // This imposes periodic boundary conditions on the unit cell of
@@ -112,5 +113,9 @@ class molecular_dynamics_sim
         // =====
         mutable bool ms_velocity_already_computed;
 };
+
+std::vector<double> operator-(const std::vector<double> &);
+std::vector<double> operator+(const std::vector<double> &, const std::vector<double> &);
+std::vector<double> operator-(const std::vector<double> &, const std::vector<double> &);
 
 #endif
