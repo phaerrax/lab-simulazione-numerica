@@ -44,12 +44,12 @@ molecular_dynamics_sim::molecular_dynamics_sim(const std::string & initial_confi
     return;
 }
 
-molecular_dynamics_sim::molecular_dynamics_sim(const std::string & initial_config_file, const std::string & pre_initial_config_file, double input_cell_edge_length)
+molecular_dynamics_sim::molecular_dynamics_sim(const std::string & initial_config_file, const std::string & pre_initial_config_file, double input_integration_step, double input_cell_edge_length):
+    n_particles(0),
+    cell_edge_length(input_cell_edge_length),
+	integration_step(input_integration_step),
+    ms_velocity_already_computed(false)
 {
-    cell_edge_length = input_cell_edge_length;
-    n_particles = 0;
-    ms_velocity_already_computed = false;
-
     // Clear the previous configuration (if there is any).
     position.clear();
     old_position.clear();
@@ -257,7 +257,7 @@ void molecular_dynamics_sim::initialise_maxwellboltzmann(double input_temperatur
         v.resize(n_coordinates, 0);
         for(unsigned int d = 0; d < n_coordinates; ++d)
         {
-            v[d] = rng.Gauss(0, temperature);
+            v[d] = rng.Gauss(0, std::sqrt(temperature));
             com_velocity[d] += v[d];
         }
     }
@@ -432,9 +432,55 @@ double molecular_dynamics_sim::get_pressure() const
             if(sq_distance < std::pow(distance_cutoff, 2))
                 w += std::pow(sq_distance, -3) * (std::pow(sq_distance, -3) - 0.5);
         }
-	w /= n_particles * n_particles / 2.;
 
     return particle_density * ms_velocity / (3. * n_particles) + 16. * w * std::pow(cell_edge_length, -3);
+}
+
+std::tuple<double, double, double, double>
+molecular_dynamics_sim::measure() const
+{
+    std::vector<double> displacement;
+
+    double temperature,
+		   distance,
+		   potential_en(0),
+		   kinetic_en,
+		   pressure,
+		   w(0);
+
+    // Cycle over pairs of particles only.
+    for(auto x = position.begin(); x != position.end(); ++x)
+        for(auto y = x + 1; y != position.end(); ++y)
+        {
+            displacement = quotient(*x - *y);
+            distance = std::sqrt(std::inner_product(displacement.begin(), displacement.end(), displacement.begin(), 0.));
+
+			// Potential energy and pressure.
+            if(distance < distance_cutoff)
+			{
+                potential_en += 4. * std::pow(distance, -12) - 4. * std::pow(distance, -6);
+                w += std::pow(distance, -12) - 0.5 * std::pow(distance, -6);
+			}
+
+		}
+
+    potential_en /= n_particles;
+
+	ms_velocity = 0;
+	for(auto & v : velocity)
+		ms_velocity += std::inner_product(v.begin(), v.end(), v.begin(), 0.);
+	ms_velocity_already_computed = true;
+
+    temperature = ms_velocity / (3. * n_particles);
+    kinetic_en = ms_velocity / (2 * n_particles);
+    pressure = particle_density * temperature + 16. * w * std::pow(cell_edge_length, -3);
+
+	return std::make_tuple(
+			temperature,
+			potential_en,
+			kinetic_en,
+			pressure
+			);
 }
 
 void molecular_dynamics_sim::write_config(const std::string & output_file) const
@@ -486,7 +532,7 @@ void molecular_dynamics_sim::write_config_xyz(const std::string & output_file) c
 
 double molecular_dynamics_sim::quotient(double r) const
 {  
-    return r - cell_edge_length * std::round(r / cell_edge_length);
+    return r - cell_edge_length * rint(r / cell_edge_length);
 }
 
 std::vector<double> molecular_dynamics_sim::quotient(const std::vector<double> & r) const

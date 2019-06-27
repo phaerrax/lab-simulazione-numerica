@@ -11,36 +11,37 @@
 
 int main(int argc, char *argv[])
 { 
-    // Random number generator initialization
-    Random rng;
-    int seed[4];
-    int p1, p2;
-    std::ifstream Primes("Primes");
-    if(Primes.is_open())
-    {
-        Primes >> p1 >> p2 ;
-    }
-    else
-        std::cerr << "Unable to open Primes." << std::endl;
-    Primes.close();
+	// Random number generator initialization
+	Random rng;
+	int seed[4];
+	int p1, p2;
+	std::ifstream Primes("Primes");
+	if(Primes.is_open())
+	{
+		Primes >> p1 >> p2 ;
+	}
+	else
+		std::cerr << "Unable to open Primes." << std::endl;
+	Primes.close();
 
-    std::ifstream input("seed.in");
-    std::string property;
-    if(input.is_open())
-    {
-        while(!input.eof())
-        {
-            input >> property;
-            if(property == "RANDOMSEED")
-            {
-                input >> seed[0] >> seed[1] >> seed[2] >> seed[3];
-                rng.SetRandom(seed,p1,p2);
-            }
-        }
-        input.close();
-    }
-    else
-        std::cerr << "Unable to open seed.in." << std::endl;
+	std::ifstream input("seed.in");
+	std::string property;
+	if(input.is_open())
+	{
+		while(!input.eof())
+		{
+			input >> property;
+			if(property == "RANDOMSEED")
+			{
+				input >> seed[0] >> seed[1] >> seed[2] >> seed[3];
+				rng.SetRandom(seed,p1,p2);
+			}
+		}
+		input.close();
+	}
+	else
+		std::cerr << "Unable to open seed.in." << std::endl;
+	
 
     // Initialisation procedure
     // ========================
@@ -138,12 +139,13 @@ int main(int argc, char *argv[])
     // =================
     double progress;
     std::cerr << "Equilibrating...";
-    for(unsigned int step = 1; step < n_steps; ++step)
+	unsigned int equilibration_steps = 2 * n_steps / 3.;
+    for(unsigned int step = 1; step < equilibration_steps; ++step)
     {
         dynamo_equilibration.move();
         if(step % 100 == 0)
         {
-            progress = 100 * static_cast<double>(step) / n_steps;
+            progress = 100 * static_cast<double>(step) / equilibration_steps;
             std::cerr << "\rEquilibrating... " << std::round(progress) << "%";
         }
     }
@@ -159,14 +161,18 @@ int main(int argc, char *argv[])
 
     // Initialise a new simulator with the final configuration of the
     // equilibration run.
-    molecular_dynamics_sim dynamo("config.final", "config.prefinal", cell_edge_length);
+    molecular_dynamics_sim dynamo("config.final", "config.prefinal", time_step, cell_edge_length);
+	/*
+	   From the two config files, the constructor calculates, using the
+	   Verlet algorithm, the current velocity. From that, the temperature
+	   can be calculated and then the velocities can be rescaled so that
+	   the temperature matches the input one.
+	*/
 
     dynamo.set_particle_number(n_particles);
     dynamo.set_particle_density(particle_density);
     dynamo.set_distance_cutoff(distance_cutoff);
-    dynamo.set_integration_step(time_step);
 
-    dynamo.initialise_maxwellboltzmann(input_temperature, rng);
     dynamo.rescale_velocity(input_temperature);
 
     // Integration of the equations of motion
@@ -188,7 +194,8 @@ int main(int argc, char *argv[])
     std::vector<double> potential_en_density,
                         kinetic_en_density,
                         temperature,
-                        pressure;
+                        pressure,
+                        total_en_density;
 
     for(unsigned int step = 1; step <= n_steps; ++step)
     {
@@ -198,15 +205,14 @@ int main(int argc, char *argv[])
             progress = 100 * static_cast<double>(step) / n_steps;
             std::cerr << "\rNumber of time-steps: " << step << " / " << n_steps << " (" << std::round(progress) << "%)";
 
-            // The integer n_conf distinguishes between the "snapshots"
-            // of the system taken at regular times during the simulation.
-            // The list of config_N.xyz files will be read by an external
-            // program, i.e. ovito, which will be able then to visualise
-            // the evolution of the system.
-            potential_en_density.push_back(dynamo.get_potential_energy_density());
-            kinetic_en_density.push_back(dynamo.get_kinetic_energy_density());
-            temperature.push_back(dynamo.get_temperature());
-            pressure.push_back(dynamo.get_pressure());
+			auto results = dynamo.measure();
+
+            temperature.push_back(std::get<0>(results));
+            potential_en_density.push_back(std::get<1>(results));
+            kinetic_en_density.push_back(std::get<2>(results));
+            pressure.push_back(std::get<3>(results));
+			// Sum potential and kinetic energy together.
+			total_en_density.push_back(std::get<1>(results) + std::get<2>(results));
         }
 		if(step % snapshots_steps == 0)
 		{
@@ -217,16 +223,6 @@ int main(int argc, char *argv[])
     std::cerr << std::endl;
 
     dynamo.write_config("config.final");
-
-    // Sum potential and kinetic energy together.
-    std::vector<double> total_en_density(potential_en_density.size());
-    std::transform(
-            potential_en_density.begin(), // Beginning of first range;
-            potential_en_density.end(),   // end of first range;
-            kinetic_en_density.begin(),   // beginning of second range;
-            total_en_density.begin(),     // beginning of results range;
-            std::plus<double>()           // binary operation (first, second)
-            );
 
     // Calculate average values and standard deviation of the measured
     // physical quantities.
@@ -312,6 +308,5 @@ int main(int argc, char *argv[])
     temperature_output.close();
     pressure_output.close();
 
-	rng.SaveSeed();
     return 0;
 }

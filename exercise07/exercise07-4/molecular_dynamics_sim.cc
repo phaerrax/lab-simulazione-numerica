@@ -44,12 +44,12 @@ molecular_dynamics_sim::molecular_dynamics_sim(const std::string & initial_confi
     return;
 }
 
-molecular_dynamics_sim::molecular_dynamics_sim(const std::string & initial_config_file, const std::string & pre_initial_config_file, double input_cell_edge_length)
+molecular_dynamics_sim::molecular_dynamics_sim(const std::string & initial_config_file, const std::string & pre_initial_config_file, double input_integration_step, double input_cell_edge_length):
+	n_particles(0),
+	cell_edge_length(input_cell_edge_length),
+	integration_step(input_integration_step),
+	ms_velocity_already_computed(false)
 {
-    cell_edge_length = input_cell_edge_length;
-    n_particles = 0;
-    ms_velocity_already_computed = false;
-
     // Clear the previous configuration (if there is any).
     position.clear();
     old_position.clear();
@@ -257,7 +257,7 @@ void molecular_dynamics_sim::initialise_maxwellboltzmann(double input_temperatur
         v.resize(n_coordinates, 0);
         for(unsigned int d = 0; d < n_coordinates; ++d)
         {
-            v[d] = rng.Gauss(0, temperature);
+            v[d] = rng.Gauss(0, std::sqrt(temperature));
             com_velocity[d] += v[d];
         }
     }

@@ -10,7 +10,7 @@ class molecular_dynamics_sim
 {
     public:
         molecular_dynamics_sim(const std::string &, double = 1);
-        molecular_dynamics_sim(const std::string &, const std::string &, double = 1);
+        molecular_dynamics_sim(const std::string &, const std::string &, double int_step, double = 1);
         // Construct the class, collecting from a file the initial
         // configuration of the system. The length of the cell edge can be
         // supplied in the last argument, in order to rescale the coordinates

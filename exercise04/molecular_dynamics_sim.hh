@@ -3,13 +3,14 @@
 
 #include <string>
 #include <vector>
+#include <tuple>
 #include "random.hh"
 
 class molecular_dynamics_sim
 {
     public:
         molecular_dynamics_sim(const std::string &, double = 1);
-        molecular_dynamics_sim(const std::string &, const std::string &, double = 1);
+        molecular_dynamics_sim(const std::string &, const std::string &, double int_step, double = 1);
         // Construct the class, collecting from a file the initial
         // configuration of the system. The length of the cell edge can be
         // supplied in the last argument, in order to rescale the coordinates
@@ -69,6 +70,21 @@ class molecular_dynamics_sim
         // The temperature, pressure and kinetic energy methods, if possible,
         // use the same calculation of the mean square velocity, to save
         // some time.
+
+		// General measurement methods
+		// ===========================
+		std::tuple<double, double, double, double> measure() const;
+		// Measure everything at the same time. In order:
+		// - temperature,
+		// - potential energy,
+		// - kinetic energy,
+		// - pressure.
+		// Calling the particular function for each quantity to be measured
+		// requires looping over all (distinct) pairs of particles for every
+		// function called, which wastes a lot of time.
+		// Since the potential energy, the pressure and the radial
+		// distribution all require a single loop, they can be effectively
+		// calculated together.
 
         // Output
         // ======

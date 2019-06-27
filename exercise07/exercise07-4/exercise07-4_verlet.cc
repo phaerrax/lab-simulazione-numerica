@@ -12,44 +12,44 @@
 
 int main(int argc, char *argv[])
 { 
-    // Random number generator initialization
-    Random rng;
-    int seed[4];
-    int p1, p2;
-    std::ifstream Primes("Primes");
-    if(Primes.is_open())
-    {
-        Primes >> p1 >> p2 ;
-    }
-    else
-        std::cerr << "Unable to open Primes." << std::endl;
-    Primes.close();
+	// Random number generator initialization
+	Random rng;
+	int seed[4];
+	int p1, p2;
+	std::ifstream Primes("Primes");
+	if(Primes.is_open())
+	{
+		Primes >> p1 >> p2 ;
+	}
+	else
+		std::cerr << "Unable to open Primes." << std::endl;
+	Primes.close();
 
-    std::ifstream input("seed.in");
-    std::string property;
-    if(input.is_open())
-    {
-        while(!input.eof())
-        {
-            input >> property;
-            if(property == "RANDOMSEED")
-            {
-                input >> seed[0] >> seed[1] >> seed[2] >> seed[3];
-                rng.SetRandom(seed,p1,p2);
-            }
-        }
-        input.close();
-    }
-    else
-        std::cerr << "Unable to open seed.in." << std::endl;
+	std::ifstream input("seed.in");
+	std::string property;
+	if(input.is_open())
+	{
+		while(!input.eof())
+		{
+			input >> property;
+			if(property == "RANDOMSEED")
+			{
+				input >> seed[0] >> seed[1] >> seed[2] >> seed[3];
+				rng.SetRandom(seed,p1,p2);
+			}
+		}
+		input.close();
+	}
+	else
+		std::cerr << "Unable to open seed.in." << std::endl;
 
-    // Initialisation procedure
-    // ========================
+	// Initialisation procedure
+	// ========================
 	const std::string suffix("_verlet.dat");
-    // Gather the type of the particle in the system and its thermodinamical
-    // phase from the command-line arguments.
-    if(argc != 2)
-    {
+	// Gather the type of the particle in the system and its thermodinamical
+	// phase from the command-line arguments.
+	if(argc != 2)
+	{
         std::cerr << "Error: invalid input.\n"
 				  << "Syntax: " << argv[0] << " <phase>\n"
 				  << "to use the parameters in the file \"./<phase>/input" << suffix << "\"." << std::endl;
@@ -151,14 +151,12 @@ int main(int argc, char *argv[])
 
     // Initialise a new simulator with the final configuration of the
     // equilibration run.
-    molecular_dynamics_sim dynamo("config.final", "config.prefinal", cell_edge_length);
+    molecular_dynamics_sim dynamo("config.final", "config.prefinal", time_step, cell_edge_length);
 
     dynamo.set_particle_number(n_particles);
     dynamo.set_particle_density(particle_density);
     dynamo.set_distance_cutoff(distance_cutoff);
-    dynamo.set_integration_step(time_step);
 
-    dynamo.initialise_maxwellboltzmann(input_temperature, rng);
     dynamo.rescale_velocity(input_temperature);
 
     // Integration of the equations of motion
