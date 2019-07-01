@@ -16,18 +16,25 @@
 
 int main(int argc, char ** argv)
 {
-	if(argc != 4)
+	if(argc != 2)
 	{
 		std::cerr << "Error: invalid input.\n"
-				  << "Syntax: " << argv[0] << " start_x start_y start_z." << std::endl;
+				  << "Syntax: " << argv[0] << " <input_file_folder>" << std::endl;
 		return 1;
 	}
     const unsigned int dim = 3;
-    std::array<double, dim> start = {
-		std::stod(argv[1]),
-		std::stod(argv[2]),
-		std::stod(argv[3])
-	};
+    std::array<double, dim> start;
+
+	std::string directory(argv[1]);
+	directory += "/";
+	std::string input_filename(directory + "input.dat");
+	std::ifstream input_file(input_filename);
+	if(!input_file.is_open())
+	{
+		std::cerr << "Unable to open " << input_filename << "." << std::endl;
+		return 2;
+	}
+	input_file >> start[0] >> start[1] >> start[2];
 
     // Random number generator initialization
     Random rng;
@@ -122,7 +129,7 @@ int main(int argc, char ** argv)
     std::cerr << "[2p-normal]  Acceptance rate after " << n_steps << " steps: " << metro2p_normal.get_acceptance_rate()  << "." << std::endl;
 
     // Output the sequence of sampled points to a file.
-    std::ofstream output_file("1s_sampled_points_uniform.dat");
+    std::ofstream output_file(directory + "1s_sampled_points_uniform.dat");
 
     const unsigned int col_width = 16;
     output_file.precision(4);
@@ -137,7 +144,7 @@ int main(int argc, char ** argv)
     output_file << std::endl;
     output_file.close();
 
-    output_file.open("2p_sampled_points_uniform.dat");
+    output_file.open(directory + "2p_sampled_points_uniform.dat");
     for(const auto & row : sequence2p_uniform)
     {
         for(auto x = row.begin(); x != row.end(); ++x)
@@ -187,7 +194,7 @@ int main(int argc, char ** argv)
             r2p_normal.size() / 100
             );
 
-    output_file.open("1s_radius_avg.dat");
+    output_file.open(directory + "1s_radius_avg.dat");
 	output_file << "uniform_avg uniform_std normal_avg normal_std\n";
     for(unsigned int i = 0; i < r1s_uniform_avg.size(); ++i)
         output_file << std::setw(col_width) << r1s_uniform_avg[i]
@@ -198,7 +205,7 @@ int main(int argc, char ** argv)
     output_file << std::endl;
     output_file.close();
 
-    output_file.open("2p_radius_avg.dat");
+    output_file.open(directory + "2p_radius_avg.dat");
 	output_file << "uniform_avg uniform_std normal_avg normal_std\n";
     for(unsigned int i = 0; i < r2p_uniform_avg.size(); ++i)
         output_file << std::setw(col_width) << r2p_uniform_avg[i]
