@@ -98,9 +98,9 @@ class molecular_dynamics_sim
         // system as the algorithm advances possible.
 
     private:
-        double force(unsigned int particle_index, unsigned int dir) const;
+		std::vector<double> force(unsigned int particle_index) const;
         // Calculate the force exerted on the particle at index
-        // 'particle_index', in the direction 'dir'.
+        // 'particle_index'.
 
         double quotient(double) const;
         std::vector<double> quotient(const std::vector<double> &) const;

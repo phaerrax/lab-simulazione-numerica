@@ -305,11 +305,7 @@ void molecular_dynamics_sim::move(void)
 	*/
 	std::vector<std::vector<double>> f(n_particles);
     for(unsigned int i = 0; i < n_particles; ++i)
-	{
-		f[i].resize(n_coordinates);
-        for(unsigned int d = 0; d < n_coordinates; ++d)
-			f[i][d] = force(i, d);
-	}
+		f[i] = force(i);
 
     for(unsigned int i = 0; i < n_particles; ++i)
     { 
@@ -336,13 +332,14 @@ void molecular_dynamics_sim::move(void)
     return;
 }
 
-double molecular_dynamics_sim::force(unsigned int n, unsigned int dir) const
+std::vector<double> molecular_dynamics_sim::force(unsigned int n) const
 {
 	// 0 <= n < n_particles.
     // Compute (adimensional) forces as -grad V(x).
-    double f(0), sq_distance;
+    double sq_distance;
 	auto this_particle = position.begin() + n;
-    std::vector<double> displacement;
+    std::vector<double> displacement,
+						f(position.begin()->size());
     for(auto x = position.begin(); x != position.end(); ++x)
     {
         if(x != this_particle)
@@ -352,7 +349,10 @@ double molecular_dynamics_sim::force(unsigned int n, unsigned int dir) const
             // In the expression for the force the distance appears in even
             // powers only, so we don't need to compute the square root.
             if(sq_distance < std::pow(distance_cutoff, 2))
-                f += displacement[dir] * (48. * std::pow(sq_distance, -7) - 24. * std::pow(sq_distance, -4));
+			{
+				for(unsigned int d = 0; d < displacement.size(); ++d)
+					f[d] += displacement[d] * 24 * (2 * std::pow(sq_distance, -7) - std::pow(sq_distance, -4));
+			}
         }
     }
 
