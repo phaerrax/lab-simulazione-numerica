@@ -5,6 +5,7 @@
 0.0005
 20000
 10
+6000
 16
 
 ------------------------------
@@ -16,4 +17,5 @@ Input format:
 - integration time step
 - total number of steps
 - recording steps (== measure_steps)
+- number of equilibration steps
 - block_size

@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
     unsigned int n_steps,
                  measure_steps, // Physical measurements will be executed
                                 // every measure_steps steps.
+				 equilibration_steps,
                  block_size;
 
     input_parameters >> input_temperature
@@ -90,6 +91,7 @@ int main(int argc, char *argv[])
                      >> time_step
                      >> n_steps
 					 >> measure_steps
+					 >> equilibration_steps
                      >> block_size;
 
     input_parameters.close();
@@ -116,7 +118,9 @@ int main(int argc, char *argv[])
               << "Density of particles: "          << particle_density << "\n"
               << "Volume of the simulation cell: " << total_volume << "\n"
               << "Edge of the simulation cell: "   << cell_edge_length << "\n"
-              << "The program integrates Newton equations with the Verlet method, using a time step of " << time_step << " for a total of " << n_steps << " steps." << std::endl;
+              << "The program integrates Newton equations with the Verlet method, using a time step of "
+			  << time_step << " for a total of " << n_steps << " steps, "
+			  << "after an equilibraton period of " << equilibration_steps << " steps." << std::endl;
 
     // Velocity initialisation
     // =======================
@@ -130,7 +134,7 @@ int main(int argc, char *argv[])
     // =================
     double progress;
     std::cerr << "Equilibrating...";
-    for(unsigned int step = 1; step < n_steps; ++step)
+    for(unsigned int step = 1; step < equilibration_steps; ++step)
     {
         dynamo_equilibration.move();
         if(step % 100 == 0)
