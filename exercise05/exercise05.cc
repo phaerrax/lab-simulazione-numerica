@@ -1,5 +1,6 @@
 #include <cmath>
 #include <iomanip>
+#include <map>
 #include <iostream>
 #include <fstream>
 #include <iterator>
@@ -9,11 +10,25 @@
 #include <vector>
 #include "metropolis.hh"
 #include "metropolis_uniform.hh"
+#include "metropolis_normal.hh"
 #include "random.hh"
 #include "statistics.hh"
 
-int main()
+int main(int argc, char ** argv)
 {
+	if(argc != 4)
+	{
+		std::cerr << "Error: invalid input.\n"
+				  << "Syntax: " << argv[0] << " start_x start_y start_z." << std::endl;
+		return 1;
+	}
+    const unsigned int dim = 3;
+    std::array<double, dim> start = {
+		std::stod(argv[1]),
+		std::stod(argv[2]),
+		std::stod(argv[3])
+	};
+
     // Random number generator initialization
     Random rng;
     int seed[4];
@@ -45,13 +60,15 @@ int main()
     else
         std::cerr << "Unable to open seed.in." << std::endl;
 
-    const unsigned int dim = 3;
-    metropolis_uniform<dim> metro1s(-1.22, 1.22);
-    metropolis_uniform<dim> metro2p(-2.9, 2.9);
-    
-    std::array<double, dim> start = {1, 0, 0};
-    metro1s.set_starting_point(start);
-    metro2p.set_starting_point(start);
+	metropolis_uniform<dim> metro1s_uniform(-1.22, 1.22);
+	metropolis_normal<dim>  metro1s_normal(0.75);
+	metropolis_uniform<dim> metro2p_uniform(-2.85, 2.85);
+	metropolis_normal<dim>  metro2p_normal(1.8);
+
+	metro1s_uniform.set_starting_point(start);
+	metro1s_normal.set_starting_point(start);
+	metro2p_uniform.set_starting_point(start);
+	metro2p_normal.set_starting_point(start);
 
     auto radius = [](const std::array<double, dim> & x)
     {
@@ -71,22 +88,38 @@ int main()
     // The functions to be sampled.
 
     unsigned int n_steps(1e5);
-    std::vector<std::array<double, dim>> sequence1s, sequence2p;
+    std::vector<std::array<double, dim>> sequence1s_uniform,
+										 sequence1s_normal,
+										 sequence2p_uniform,
+										 sequence2p_normal;
     std::array<double, dim> new_point;
-    std::vector<double> r1s, r2p;
+    std::vector<double> r1s_uniform,
+						r1s_normal,
+						r2p_uniform,
+						r2p_normal;
     for(unsigned int n = 0; n < n_steps; ++n)
     {
-        new_point = metro1s.step(f1s, rng);
-        sequence1s.push_back(new_point);
-        r1s.push_back(radius(new_point));
+        new_point = metro1s_uniform.step(f1s, rng);
+        sequence1s_uniform.push_back(new_point);
+        r1s_uniform.push_back(radius(new_point));
 
-        new_point = metro2p.step(f2p, rng);
-        sequence2p.push_back(new_point);
-        r2p.push_back(radius(new_point));
+		new_point = metro1s_normal.step(f1s, rng);
+		sequence1s_normal.push_back(new_point);
+		r1s_normal.push_back(radius(new_point));
+
+        new_point = metro2p_uniform.step(f2p, rng);
+        sequence2p_uniform.push_back(new_point);
+        r2p_uniform.push_back(radius(new_point));
+
+		new_point = metro2p_normal.step(f2p, rng);
+		sequence2p_normal.push_back(new_point);
+		r2p_normal.push_back(radius(new_point));
     }
 
-    std::cerr << "[1s] Acceptance rate after " << n_steps << " steps: " << metro1s.get_acceptance_rate() << "." << std::endl;
-    std::cerr << "[2p] Acceptance rate after " << n_steps << " steps: " << metro2p.get_acceptance_rate() << "." << std::endl;
+    std::cerr << "[1s-uniform] Acceptance rate after " << n_steps << " steps: " << metro1s_uniform.get_acceptance_rate() << "." << std::endl;
+    std::cerr << "[1s-normal]  Acceptance rate after " << n_steps << " steps: " << metro1s_normal.get_acceptance_rate()  << "." << std::endl;
+    std::cerr << "[2p-uniform] Acceptance rate after " << n_steps << " steps: " << metro2p_uniform.get_acceptance_rate() << "." << std::endl;
+    std::cerr << "[2p-normal]  Acceptance rate after " << n_steps << " steps: " << metro2p_normal.get_acceptance_rate()  << "." << std::endl;
 
     // Output the sequence of sampled points to a file.
     std::ofstream output_file("1s_sampled_points_uniform.dat");
@@ -95,7 +128,7 @@ int main()
     output_file.precision(4);
     output_file << std::scientific;
 
-    for(const auto & row : sequence1s)
+    for(const auto & row : sequence1s_uniform)
     {
         for(auto x = row.begin(); x != row.end(); ++x)
             output_file << std::setw(col_width) << *x;
@@ -105,7 +138,7 @@ int main()
     output_file.close();
 
     output_file.open("2p_sampled_points_uniform.dat");
-    for(const auto & row : sequence2p)
+    for(const auto & row : sequence2p_uniform)
     {
         for(auto x = row.begin(); x != row.end(); ++x)
             output_file << std::setw(col_width) << *x;
@@ -116,37 +149,62 @@ int main()
 
     // Output the progressive values of the average radius and its standard
     // deviation, obtained with a blocking technique, to a file.
-    std::vector<double> r1s_avg,
-                        r1s_std,
-                        r2p_avg,
-                        r2p_std;
+    std::vector<double> r1s_uniform_avg,
+                        r1s_uniform_std,
+                        r1s_normal_avg,
+                        r1s_normal_std,
+                        r2p_uniform_avg,
+                        r2p_uniform_std,
+                        r2p_normal_avg,
+                        r2p_normal_std;
 
-    output_file.open("1s_radius_avg_uniform.dat");
     block_statistics(
-            std::begin(r1s),
-            std::end(r1s),
-            std::back_inserter(r1s_avg),
-            std::back_inserter(r1s_std),
-            r1s.size() / 100
+            std::begin(r1s_uniform),
+            std::end(r1s_uniform),
+            std::back_inserter(r1s_uniform_avg),
+            std::back_inserter(r1s_uniform_std),
+            r1s_uniform.size() / 100
             );
-    for(unsigned int i = 0; i < r1s_avg.size(); ++i)
-        output_file << std::setw(col_width) << r1s_avg[i]
-                    << std::setw(col_width) << r1s_std[i]
+    block_statistics(
+            std::begin(r1s_normal),
+            std::end(r1s_normal),
+            std::back_inserter(r1s_normal_avg),
+            std::back_inserter(r1s_normal_std),
+            r1s_normal.size() / 100
+            );
+    block_statistics(
+            std::begin(r2p_uniform),
+            std::end(r2p_uniform),
+            std::back_inserter(r2p_uniform_avg),
+            std::back_inserter(r2p_uniform_std),
+            r2p_uniform.size() / 100
+            );
+    block_statistics(
+            std::begin(r2p_normal),
+            std::end(r2p_normal),
+            std::back_inserter(r2p_normal_avg),
+            std::back_inserter(r2p_normal_std),
+            r2p_normal.size() / 100
+            );
+
+    output_file.open("1s_radius_avg.dat");
+	output_file << "uniform_avg uniform_std normal_avg normal_std\n";
+    for(unsigned int i = 0; i < r1s_uniform_avg.size(); ++i)
+        output_file << std::setw(col_width) << r1s_uniform_avg[i]
+                    << std::setw(col_width) << r1s_uniform_std[i]
+                    << std::setw(col_width) << r1s_normal_avg[i]
+                    << std::setw(col_width) << r1s_normal_std[i]
                     << "\n";
     output_file << std::endl;
     output_file.close();
 
-    output_file.open("2p_radius_avg_uniform.dat");
-    block_statistics(
-            std::begin(r2p),
-            std::end(r2p),
-            std::back_inserter(r2p_avg),
-            std::back_inserter(r2p_std),
-            r2p.size() / 100
-            );
-    for(unsigned int i = 0; i < r2p_avg.size(); ++i)
-        output_file << std::setw(col_width) << r2p_avg[i]
-                    << std::setw(col_width) << r2p_std[i]
+    output_file.open("2p_radius_avg.dat");
+	output_file << "uniform_avg uniform_std normal_avg normal_std\n";
+    for(unsigned int i = 0; i < r2p_uniform_avg.size(); ++i)
+        output_file << std::setw(col_width) << r2p_uniform_avg[i]
+                    << std::setw(col_width) << r2p_uniform_std[i]
+                    << std::setw(col_width) << r2p_normal_avg[i]
+                    << std::setw(col_width) << r2p_normal_std[i]
                     << "\n";
     output_file << std::endl;
     output_file.close();
