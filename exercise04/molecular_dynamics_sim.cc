@@ -295,6 +295,22 @@ void molecular_dynamics_sim::move(void)
     // Move particles using Verlet algorithm.
     unsigned int n_coordinates = position.begin()->size();
     std::vector<double> new_position(n_coordinates);
+
+	/*
+	   Be careful not to merge this loop with the other one below: they must
+	   be separated because the forces are supposed to be calculated using the
+	   current positions of the particles.
+	   Otherwise, the 2nd particle will have its new position calculated using
+	   the already updated position of the 1st particle, and so on.
+	*/
+	std::vector<std::vector<double>> f(n_particles);
+    for(unsigned int i = 0; i < n_particles; ++i)
+	{
+		f[i].resize(n_coordinates);
+        for(unsigned int d = 0; d < n_coordinates; ++d)
+			f[i][d] = force(i, d);
+	}
+
     for(unsigned int i = 0; i < n_particles; ++i)
     { 
         for(unsigned int d = 0; d < n_coordinates; ++d)
@@ -305,7 +321,7 @@ void molecular_dynamics_sim::move(void)
             // x(t + s) = 2 * x(t) - x(t - s) + s^2 * f(x(t)).
             new_position[d] = 
                 quotient(
-                        2. * position[i][d] - old_position[i][d] + force(i, d) * std::pow(integration_step, 2)
+                        2. * position[i][d] - old_position[i][d] + f[i][d] * std::pow(integration_step, 2)
                         );
             // Calculate the current velocity:
             // v(t) = (x(t + s) - x(t - s)) / 2.
