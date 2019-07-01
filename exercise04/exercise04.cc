@@ -9,6 +9,8 @@
 #include "statistics.hh"
 #include "molecular_dynamics_sim.hh"
 
+std::string progress_bar(double, unsigned int);
+
 int main(int argc, char *argv[])
 { 
 	// Random number generator initialization
@@ -142,17 +144,16 @@ int main(int argc, char *argv[])
     // Equilibration run
     // =================
     double progress;
-    std::cerr << "Equilibrating...";
     for(unsigned int step = 1; step < equilibration_steps; ++step)
     {
         dynamo_equilibration.move();
-        if(step % 100 == 0)
+        if(step % 10 == 0)
         {
-            progress = 100 * static_cast<double>(step) / equilibration_steps;
-            std::cerr << "\rEquilibrating... " << std::round(progress) << "%";
+            progress = static_cast<double>(step) / equilibration_steps;
+            std::cerr << "\rEquilibration " << progress_bar(progress, 30);
         }
     }
-    std::cerr << "\rEquilibrating... done." << std::endl;
+	std::cerr << "\rEquilibration " << progress_bar(1, 30) << std::endl;
     // Stop a step before the end: we need to output the second-to-last
     // configuration, which will be used later to restart the simulation.
     dynamo_equilibration.write_config("config.prefinal");
@@ -205,8 +206,8 @@ int main(int argc, char *argv[])
         dynamo.move();
         if(step % measurements_steps == 0)
         {
-            progress = 100 * static_cast<double>(step) / n_steps;
-            std::cerr << "\rNumber of time-steps: " << step << " / " << n_steps << " (" << std::round(progress) << "%)";
+            progress = static_cast<double>(step) / n_steps;
+            std::cerr << "\rSimulation " << progress_bar(progress, 30);
 
 			auto results = dynamo.measure();
 
@@ -223,7 +224,7 @@ int main(int argc, char *argv[])
             ++n_conf;
 		}
     }
-    std::cerr << std::endl;
+    std::cerr << "\rSimulation " << progress_bar(1, 30) << std::endl;
 
     dynamo.write_config("config.final");
 
@@ -312,4 +313,13 @@ int main(int argc, char *argv[])
     pressure_output.close();
 
     return 0;
+}
+
+std::string progress_bar(double progress, unsigned int bar_len)
+{
+	unsigned int filled_tiles(progress * bar_len),
+				 percent(100 * progress);
+	std::string filled(filled_tiles, '#'),
+				empty(bar_len - filled_tiles, '-');
+	return "[" + filled + empty + "] " + std::to_string(percent) + "%";
 }
