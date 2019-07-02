@@ -111,7 +111,7 @@ int main(int argc, char ** argv)
     }
 
 	// Actual simulation
-    unsigned int n_steps(1e5);
+    unsigned int n_steps(1e6);
     std::vector<std::array<double, dim>> sequence1s_uniform,
 										 sequence1s_normal,
 										 sequence2p_uniform,
@@ -121,23 +121,33 @@ int main(int argc, char ** argv)
 						r1s_normal,
 						r2p_uniform,
 						r2p_normal;
+	/*
+	   Unfortunately the disk quota is too small to save every
+	   sampled position, therefore I will record it only after
+	   a certain number of steps.
+	 */
+	const unsigned int record_steps(20);
     for(unsigned int n = 0; n < n_steps; ++n)
     {
         new_point = metro1s_uniform.step(f1s, rng);
-        sequence1s_uniform.push_back(new_point);
         r1s_uniform.push_back(radius(new_point));
+		if(n % record_steps == 0)
+			sequence1s_uniform.push_back(new_point);
 
 		new_point = metro1s_normal.step(f1s, rng);
-		sequence1s_normal.push_back(new_point);
 		r1s_normal.push_back(radius(new_point));
+		if(n % record_steps == 0)
+			sequence1s_normal.push_back(new_point);
 
         new_point = metro2p_uniform.step(f2p, rng);
-        sequence2p_uniform.push_back(new_point);
         r2p_uniform.push_back(radius(new_point));
+		if(n % record_steps == 0)
+			sequence2p_uniform.push_back(new_point);
 
 		new_point = metro2p_normal.step(f2p, rng);
-		sequence2p_normal.push_back(new_point);
 		r2p_normal.push_back(radius(new_point));
+		if(n % record_steps == 0)
+			sequence2p_normal.push_back(new_point);
     }
 
     std::cerr << "[1s-uniform] Acceptance rate after " << n_steps << " steps: " << metro1s_uniform.get_acceptance_rate() << "." << std::endl;
@@ -173,6 +183,7 @@ int main(int argc, char ** argv)
 
     // Output the progressive values of the average radius and its standard
     // deviation, obtained with a blocking technique, to a file.
+	const unsigned int block_size(30);
     std::vector<double> r1s_uniform_avg,
                         r1s_uniform_std,
                         r1s_normal_avg,
@@ -187,28 +198,28 @@ int main(int argc, char ** argv)
             std::end(r1s_uniform),
             std::back_inserter(r1s_uniform_avg),
             std::back_inserter(r1s_uniform_std),
-            r1s_uniform.size() / 100
+			block_size
             );
     block_statistics(
             std::begin(r1s_normal),
             std::end(r1s_normal),
             std::back_inserter(r1s_normal_avg),
             std::back_inserter(r1s_normal_std),
-            r1s_normal.size() / 100
+			block_size
             );
     block_statistics(
             std::begin(r2p_uniform),
             std::end(r2p_uniform),
             std::back_inserter(r2p_uniform_avg),
             std::back_inserter(r2p_uniform_std),
-            r2p_uniform.size() / 100
+			block_size
             );
     block_statistics(
             std::begin(r2p_normal),
             std::end(r2p_normal),
             std::back_inserter(r2p_normal_avg),
             std::back_inserter(r2p_normal_std),
-            r2p_normal.size() / 100
+			block_size
             );
 
     output_file.open(directory + "1s_radius_avg.dat");
