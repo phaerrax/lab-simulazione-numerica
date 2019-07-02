@@ -23,6 +23,8 @@ int main(int argc, char ** argv)
 		return 1;
 	}
     const unsigned int dim = 3;
+	unsigned int equilibration_steps_1s,
+				 equilibration_steps_2p;
     std::array<double, dim> start;
 
 	std::string directory(argv[1]);
@@ -34,7 +36,8 @@ int main(int argc, char ** argv)
 		std::cerr << "Unable to open " << input_filename << "." << std::endl;
 		return 2;
 	}
-	input_file >> start[0] >> start[1] >> start[2];
+	input_file >> start[0] >> start[1] >> start[2]
+			   >> equilibration_steps_1s >> equilibration_steps_2p;
 
     // Random number generator initialization
     Random rng;
@@ -94,6 +97,20 @@ int main(int argc, char ** argv)
     };
     // The functions to be sampled.
 
+	// Equilibration phase
+    for(unsigned int n = 0; n < equilibration_steps_1s; ++n)
+    {
+        metro1s_uniform.step(f1s, rng);
+		metro1s_normal.step(f1s, rng);
+	}
+
+    for(unsigned int n = 0; n < equilibration_steps_2p; ++n)
+	{
+        metro2p_uniform.step(f2p, rng);
+		metro2p_normal.step(f2p, rng);
+    }
+
+	// Actual simulation
     unsigned int n_steps(1e5);
     std::vector<std::array<double, dim>> sequence1s_uniform,
 										 sequence1s_normal,
