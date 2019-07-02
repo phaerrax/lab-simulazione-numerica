@@ -16,7 +16,10 @@ $(EXNAME): $(EXNAME).o $(INCLUDE)/random.o $(INCLUDE)/statistics.hh
 $(EXNAME)_raw: $(EXNAME)_raw.o $(INCLUDE)/random.o $(INCLUDE)/statistics.hh
 	$(CC) $^ -o $@
 
-all: $(EXNAME) $(EXNAME)_raw
+$(EXNAME)_raw_equilibrated: $(EXNAME)_raw_equilibrated.o $(INCLUDE)/random.o $(INCLUDE)/statistics.hh
+	$(CC) $^ -o $@
+
+all: $(EXNAME) $(EXNAME)_raw $(EXNAME)_raw_equilibrated
 
 clean:
-	rm *.o $(EXNAME) $(EXNAME)_raw seed.out
+	rm *.o $(EXNAME) $(EXNAME)_raw $(EXNAME)_raw_equilibrated seed.out
