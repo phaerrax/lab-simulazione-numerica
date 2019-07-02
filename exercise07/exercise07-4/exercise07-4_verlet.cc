@@ -86,6 +86,8 @@ int main(int argc, char *argv[])
 				 equilibration_steps,
                  block_size;
 
+	if(input_parameters.is_open())
+	{
     input_parameters >> input_temperature
                      >> n_particles
                      >> particle_density
@@ -95,7 +97,12 @@ int main(int argc, char *argv[])
 					 >> measure_steps
 					 >> equilibration_steps
                      >> block_size;
-
+	}
+	else
+	{
+		std::cerr << "Error: unable to open " << input_parameters_file << "." << std::endl;
+		return 2;
+	}
     input_parameters.close();
 
     // We assume that the system is confined in a cubic cell, which volume
@@ -181,8 +188,6 @@ int main(int argc, char *argv[])
 	for(unsigned int i = 0; i < n_bins_rd; ++i)
 		bin_upper_bounds[i] = max_distance_rd / n_bins_rd * (i + 1);
 
-    dynamo.write_config_xyz(prefix + "frames/config_0.xyz");
-
 	std::vector<std::vector<double>> radial_distribution;
     std::vector<double> potential_en_density,
                         kinetic_en_density,
@@ -195,14 +200,6 @@ int main(int argc, char *argv[])
         {
             progress = static_cast<double>(step) / n_steps;
             std::cerr << "\rSimulation " << progress_bar(progress, 30);
-
-            // The integer n_conf distinguishes between the "snapshots"
-            // of the system taken at regular times during the simulation.
-            // The list of config_N.xyz files will be read by an external
-            // program, i.e. ovito, which will be able then to visualise
-            // the evolution of the system.
-			//dynamo.write_config_xyz(prefix + "frames/config_" + std::to_string(n_conf) + ".xyz");
-            ++n_conf;
 			
 			auto results = dynamo.measure(n_bins_rd, max_distance_rd);
 
